@@ -16,13 +16,13 @@
 - Skills-gap analysis — compare CV profile against job requirements, produce a match score and a list of missing / weak skills
 - Cover letter generation/ or outline/ review of existing — LLM produces a tailored cover letter that highlights relevant experience and addresses gaps
 - Application dashboard — simple list of saved jobs with their generated outputs so the user can track applications
+- The React frontend uses short polling against the API to detect when async results are ready, keeping the frontend stateless and avoiding the need for persistent connections such as WebSockets
 
 
 **Optional / stretch features**
 - Job description scraping — user pastes a URL and the system extracts the job description automatically
-- Frontend upgrade from Streamlit to React / Next.js for a more polished Unit
 - Richer dashboard — filters, status tracking, side-by-side comparison of multiple roles
-- User authentication — simple approach as a start and perhaps AWS Cognito if time permits
+- User authentication — MVP has no auth or a simple approach; AWS Cognito as a stretch goal
 - CV improvement suggestions — LLM recommends how to strengthen the CV for a target role
 - Interview preparation — LLM generates likely interview questions for the role with suggested talking points
 
@@ -46,21 +46,21 @@
 
 | Service | Purpose |
 |---------|---------|
-| **S3** | Store uploaded CVs, job descriptions, and generated outputs (cover letters, interview prep) |
+| **S3** | Store uploaded CVs and job description files; triggers the processing pipeline via event notifications |
 | **Textract** | Extract structured text from PDF CVs (tables, key-value pairs) |
-| **Lambda** | Event-driven async processing: triggered on S3 upload, runs Textract parsing and Bedrock LLM calls, writes results to DB — as used in Labs 6, 8 |
+| **Lambda** | Event-driven async processing: triggered on S3 upload, runs Textract parsing and Bedrock LLM calls, writes results to DynamoDB — as used in Labs 6, 8 |
 | **SQS** | Decouple Lambda processing from the API — notify backend when async results are ready; also used in Lab 6 |
 | **Elastic Beanstalk** | Host the containerised FastAPI backend (REST API) with auto-scaling and load balancing — as used in Labs 3-5, 7 |
 | **Bedrock** | LLM inference for cover letter generation, skills-gap analysis, and interview prep |
-| **DynamoDB** | Store user profiles, parsed CV data, job records, and generated outputs — document-oriented, serverless, pairs well with Lambda, used in labs |
-| **CloudFront** | Serve the frontend (Streamlit or static React build) with low latency |
+| **DynamoDB** | Store user profiles, parsed CV data, job records, and all generated outputs (cover letters, interview prep) — document-oriented, serverless, pairs well with Lambda, used in labs |
+| **CloudFront** | Serve the static React frontend build from S3 with low latency |
 | **CloudWatch** | Centralised logging and monitoring across all services |
-| **Cognito** _(stretch)_ | User authentication if time permits — MVP uses a simpler approach |
+| **Cognito** _(stretch)_ | User authentication if time permits — MVP has no auth or a simple approach |
 
 **Other tools and frameworks**
 - Python 3.13, managed with `uv`
 - FastAPI for the backend REST API
-- Streamlit for the initial frontend (quick iteration); optionally migrate to React / Next.js
+- React for the frontend
 - Docker for containerisation (EB deployment)
 - GitHub for version control and collaboration
 - GitHub Actions for CI/CD (build, test, deploy) — as used in Lab 4
