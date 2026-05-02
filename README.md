@@ -1,32 +1,43 @@
-# CCBDA Course Project
+# CCBDA Project — Job Application Assistant
 
-Cloud Computing for Big Data Analytics — Course project (UPC, 2026).
+Cloud Computing and Big Data Analytics — Course project (UPC, 2026).
 
 ## About
 
-This repository contains the source code and documentation for the CCBDA course project. The goal is to build a real-world application deployed on AWS, applying the cloud computing concepts studied throughout the course.
+A cloud-native application that helps job seekers identify skills gaps by analyzing their CV against job descriptions using AWS services (Bedrock, DynamoDB, Textract).
 
-## Requirements
+## Prerequisites
 
-- Python 3.13+
-- [uv](https://docs.astral.sh/uv/) for dependency management
-
-## Getting Started
-
-```bash
-# Clone the repository
-git clone https://github.com/benediktpri/ccbda-project.git
-cd ccbda-project
-
-# Install dependencies
-uv sync
-```
+- Python 3.13 ([uv](https://docs.astral.sh/uv/) recommended)
+- Node.js 20+ (frontend)
 
 ## Project Structure
 
 ```
 ccbda-project/
-├── docs/           # Project documentation and instructions
-├── pyproject.toml  # Project metadata and dependencies
-└── README.md
+├── backend/   # FastAPI backend + DynamoDB
+├── frontend/  # Web app
+└── docs/      # Architecture, schema design, meeting notes
 ```
+
+## Getting Started
+
+```bash
+git clone https://github.com/benediktpri/ccbda-project.git
+cd ccbda-project/backend
+uv sync
+cp .env.example .env
+uv run uvicorn app.main:app --reload
+```
+
+See [backend/README.md](backend/README.md) for full details.
+
+### Pre-commit Hooks
+
+Install once from `backend/`:
+
+```bash
+uv run pre-commit install
+```
+
+This runs ruff lint + format on every commit automatically.
