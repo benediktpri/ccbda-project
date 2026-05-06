@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import jobs, profiles, results, users
+from app.routers import jobs, profiles, results, upload, users
 
 app = FastAPI(title="CCBDA API", version="0.1.0")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(users.router, tags=["users"])
+app.include_router(upload.router, prefix="/users/{user_id}", tags=["upload"])
 app.include_router(profiles.router, prefix="/users/{user_id}", tags=["profiles"])
 app.include_router(jobs.router, prefix="/users/{user_id}", tags=["jobs"])
 app.include_router(results.router, prefix="/users/{user_id}", tags=["results"])

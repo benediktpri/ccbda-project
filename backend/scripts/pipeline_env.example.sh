@@ -1,0 +1,9 @@
+AWS_REGION=eu-west-1
+S3_BUCKET_NAME=ccbda-app-bucket
+DYNAMODB_TABLE_NAME=AppTable
+LAMBDA_ROLE_NAME=ccbda-lambda-role
+LAMBDA_EXTRACTOR_NAME=ccbda-text-extractor
+LAMBDA_STRUCTURER_NAME=ccbda-profile-structurer
+QUEUE_NAME=ccbda-cv-processing
+DLQ_NAME=ccbda-cv-processing-dlq
+BEDROCK_MODEL_ID=eu.anthropic.claude-haiku-4-5-20251001-v1:0

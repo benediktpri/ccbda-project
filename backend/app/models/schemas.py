@@ -147,3 +147,14 @@ class AnalysisResultResponse(BaseModel):
     missing_skills: list[MissingSkill] = Field(default_factory=list)
     recommendations: str | None = None
     created_at: datetime | None = None
+
+
+class UploadResponse(BaseModel):
+    upload_url: str
+    upload_fields: dict
+    s3_key: str
+
+
+class FileUploadResponse(BaseModel):
+    s3_key: str
+    message: str
