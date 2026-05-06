@@ -92,18 +92,18 @@ class TestTextExtractor:
 
     @patch("app.lambdas.text_extractor.textract")
     @patch("app.lambdas.text_extractor.s3")
-    def test_textract_failure_marks_failed(self, mock_s3, mock_textract, aws_resources):
+    def test_textract_failure_propagates(self, mock_s3, mock_textract, aws_resources):
         mock_s3.get_object.return_value = {"Body": __import__("io").BytesIO(b"%PDF-1.4 test")}
         mock_textract.detect_document_text.side_effect = Exception("Textract unavailable")
 
         from app.lambdas.text_extractor import lambda_handler
 
-        result = lambda_handler(_s3_event("bucket", "profiles/user123/abc.pdf"), None)
-        assert result["statusCode"] == 200
+        with pytest.raises(Exception, match="Textract unavailable"):
+            lambda_handler(_s3_event("bucket", "profiles/user123/abc.pdf"), None)
 
         table = boto3.resource("dynamodb", region_name="eu-west-1").Table("AppTable")
         raw = table.get_item(Key={"PK": "USER#user123", "SK": "PROFILE#RAW"})["Item"]
-        assert raw["status"] == "failed"
+        assert raw["status"] == "processing"
 
     @patch("app.lambdas.text_extractor.textract")
     @patch("app.lambdas.text_extractor.s3")

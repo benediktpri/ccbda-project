@@ -44,55 +44,45 @@ def lambda_handler(event, context):
             ExpressionAttributeValues={":status": "processing", ":now": _now()},
         )
 
-        try:
-            s3_obj = s3.get_object(Bucket=bucket, Key=key)
-            doc_bytes = s3_obj["Body"].read()
+        s3_obj = s3.get_object(Bucket=bucket, Key=key)
+        doc_bytes = s3_obj["Body"].read()
 
-            response = textract.detect_document_text(Document={"Bytes": doc_bytes})
-            lines = [block["Text"] for block in response.get("Blocks", []) if block["BlockType"] == "LINE"]
-            extracted_text = "\n".join(lines)
-            logger.info("Extracted %d lines from %s", len(lines), key)
+        response = textract.detect_document_text(Document={"Bytes": doc_bytes})
+        lines = [block["Text"] for block in response.get("Blocks", []) if block["BlockType"] == "LINE"]
+        extracted_text = "\n".join(lines)
+        logger.info("Extracted %d lines from %s", len(lines), key)
 
-            table.update_item(
-                Key={"PK": f"USER#{user_id}", "SK": "PROFILE#RAW"},
-                UpdateExpression="SET raw_text = :text, #s = :status, updated_at = :now",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={
-                    ":text": extracted_text,
-                    ":status": "ready",
-                    ":now": _now(),
-                },
-            )
+        table.update_item(
+            Key={"PK": f"USER#{user_id}", "SK": "PROFILE#RAW"},
+            UpdateExpression="SET raw_text = :text, #s = :status, updated_at = :now",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":text": extracted_text,
+                ":status": "ready",
+                ":now": _now(),
+            },
+        )
 
-            table.put_item(
-                Item={
-                    "PK": f"USER#{user_id}",
-                    "SK": "PROFILE#STRUCTURED",
-                    "status": "processing",
-                    "created_at": _now(),
-                    "updated_at": _now(),
+        table.put_item(
+            Item={
+                "PK": f"USER#{user_id}",
+                "SK": "PROFILE#STRUCTURED",
+                "status": "processing",
+                "created_at": _now(),
+                "updated_at": _now(),
+            }
+        )
+
+        sqs.send_message(
+            QueueUrl=QUEUE_URL,
+            MessageBody=json.dumps(
+                {
+                    "user_id": user_id,
+                    "s3_key": key,
+                    "raw_text": extracted_text,
                 }
-            )
-
-            sqs.send_message(
-                QueueUrl=QUEUE_URL,
-                MessageBody=json.dumps(
-                    {
-                        "user_id": user_id,
-                        "s3_key": key,
-                        "raw_text": extracted_text,
-                    }
-                ),
-            )
-            logger.info("Sent message to SQS for user_id=%s", user_id)
-
-        except Exception:
-            logger.exception("Failed to process %s", key)
-            table.update_item(
-                Key={"PK": f"USER#{user_id}", "SK": "PROFILE#RAW"},
-                UpdateExpression="SET #s = :status, updated_at = :now",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={":status": "failed", ":now": _now()},
-            )
+            ),
+        )
+        logger.info("Sent message to SQS for user_id=%s", user_id)
 
     return {"statusCode": 200}

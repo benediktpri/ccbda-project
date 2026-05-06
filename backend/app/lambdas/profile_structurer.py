@@ -46,61 +46,43 @@ def lambda_handler(event, context):
         body = json.loads(record["body"])
         user_id = body["user_id"]
         raw_text = body["raw_text"]
+
         logger.info("Processing profile structuring for user_id=%s", user_id)
 
-        try:
-            request_body = json.dumps(
-                {
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "system": SYSTEM_PROMPT,
-                    "messages": [{"role": "user", "content": f"Parse this CV:\n\n{raw_text}"}],
-                    "max_tokens": 4096,
-                    "temperature": 0.1,
-                    "tools": [TOOL_DEFINITION],
-                    "tool_choice": {"type": "tool", "name": "extract_cv_data"},
-                }
-            )
-
-            response = bedrock.invoke_model(
-                modelId=MODEL_ID,
-                body=request_body,
-                contentType="application/json",
-                accept="application/json",
-            )
-
-            response_body = json.loads(response["body"].read())
-            tool_use_block = next(block for block in response_body["content"] if block["type"] == "tool_use")
-            structured_data = tool_use_block["input"]
-            logger.info("Bedrock tool_use response received for user_id=%s", user_id)
-
-            now = _now()
-            item = {
-                "PK": f"USER#{user_id}",
-                "SK": "PROFILE#STRUCTURED",
-                "status": "ready",
-                "created_at": now,
-                "updated_at": now,
-                **structured_data,
+        request_body = json.dumps(
+            {
+                "anthropic_version": "bedrock-2023-05-31",
+                "system": SYSTEM_PROMPT,
+                "messages": [{"role": "user", "content": f"Parse this CV:\n\n{raw_text}"}],
+                "max_tokens": 4096,
+                "temperature": 0.1,
+                "tools": [TOOL_DEFINITION],
+                "tool_choice": {"type": "tool", "name": "extract_cv_data"},
             }
-            table.put_item(Item=item)
-            logger.info("Wrote structured profile for user_id=%s", user_id)
+        )
 
-        except (KeyError, StopIteration):
-            logger.exception("Unexpected Bedrock response format for user_id=%s", user_id)
-            table.update_item(
-                Key={"PK": f"USER#{user_id}", "SK": "PROFILE#STRUCTURED"},
-                UpdateExpression="SET #s = :status, updated_at = :now",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={":status": "failed", ":now": _now()},
-            )
+        response = bedrock.invoke_model(
+            modelId=MODEL_ID,
+            body=request_body,
+            contentType="application/json",
+            accept="application/json",
+        )
 
-        except Exception:
-            logger.exception("Failed to structure profile for user_id=%s", user_id)
-            table.update_item(
-                Key={"PK": f"USER#{user_id}", "SK": "PROFILE#STRUCTURED"},
-                UpdateExpression="SET #s = :status, updated_at = :now",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={":status": "failed", ":now": _now()},
-            )
+        response_body = json.loads(response["body"].read())
+        tool_use_block = next(block for block in response_body["content"] if block["type"] == "tool_use")
+        structured_data = tool_use_block["input"]
+        logger.info("Bedrock tool_use response received for user_id=%s", user_id)
+
+        now = _now()
+        item = {
+            "PK": f"USER#{user_id}",
+            "SK": "PROFILE#STRUCTURED",
+            "status": "ready",
+            "created_at": now,
+            "updated_at": now,
+            **structured_data,
+        }
+        table.put_item(Item=item)
+        logger.info("Wrote structured profile for user_id=%s", user_id)
 
     return {"statusCode": 200}

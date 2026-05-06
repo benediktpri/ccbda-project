@@ -107,28 +107,28 @@ class TestProfileStructurer:
         assert structured["willingness_to_relocate"] is True
 
     @patch("app.lambdas.profile_structurer.bedrock")
-    def test_unexpected_response_format_marks_failed(self, mock_bedrock, aws_resources):
+    def test_unexpected_response_format_raises(self, mock_bedrock, aws_resources):
         unexpected_response = {"content": [{"type": "text", "text": "I cannot parse this CV."}]}
         mock_bedrock.invoke_model.return_value = {"body": BytesIO(json.dumps(unexpected_response).encode())}
 
         from app.lambdas.profile_structurer import lambda_handler
 
-        result = lambda_handler(_sqs_event("user123", "Some CV text"), None)
-        assert result["statusCode"] == 200
+        with pytest.raises(StopIteration):
+            lambda_handler(_sqs_event("user123", "Some CV text"), None)
 
         table = boto3.resource("dynamodb", region_name="eu-west-1").Table("AppTable")
         structured = table.get_item(Key={"PK": "USER#user123", "SK": "PROFILE#STRUCTURED"})["Item"]
-        assert structured["status"] == "failed"
+        assert structured["status"] == "processing"
 
     @patch("app.lambdas.profile_structurer.bedrock")
-    def test_bedrock_exception_marks_failed(self, mock_bedrock, aws_resources):
+    def test_bedrock_exception_propagates(self, mock_bedrock, aws_resources):
         mock_bedrock.invoke_model.side_effect = Exception("Bedrock throttled")
 
         from app.lambdas.profile_structurer import lambda_handler
 
-        result = lambda_handler(_sqs_event("user123", "Some CV text"), None)
-        assert result["statusCode"] == 200
+        with pytest.raises(Exception, match="Bedrock throttled"):
+            lambda_handler(_sqs_event("user123", "Some CV text"), None)
 
         table = boto3.resource("dynamodb", region_name="eu-west-1").Table("AppTable")
         structured = table.get_item(Key={"PK": "USER#user123", "SK": "PROFILE#STRUCTURED"})["Item"]
-        assert structured["status"] == "failed"
+        assert structured["status"] == "processing"

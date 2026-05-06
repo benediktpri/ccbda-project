@@ -189,6 +189,8 @@ echo "Packaging profile_structurer"
 rm -f /tmp/profile_structurer.zip
 zip -j /tmp/profile_structurer.zip app/lambdas/profile_structurer.py /tmp/extraction_schema.json >/dev/null
 
+package_lambda "dlq_handler" "app/lambdas/dlq_handler.py"
+
 echo "=== Step 4: Deploy Lambdas ==="
 deploy_lambda \
     "${LAMBDA_EXTRACTOR_NAME}" \
@@ -204,12 +206,22 @@ deploy_lambda \
     "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME},BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID}" \
     120
 
+deploy_lambda \
+    "${LAMBDA_DLQ_HANDLER_NAME}" \
+    "/tmp/dlq_handler.zip" \
+    "dlq_handler.lambda_handler" \
+    "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME}" \
+    30
+
 echo "=== Step 5: S3 → Lambda 1 ==="
 ensure_s3_invoke_permission "${LAMBDA_EXTRACTOR_NAME}"
 configure_s3_notification
 
 echo "=== Step 6: SQS → Lambda 2 ==="
 ensure_sqs_event_mapping "${LAMBDA_STRUCTURER_NAME}" "${QUEUE_ARN}"
+
+echo "=== Step 7: DLQ → DLQ Handler ==="
+ensure_sqs_event_mapping "${LAMBDA_DLQ_HANDLER_NAME}" "${DLQ_ARN}"
 
 echo ""
 echo "=== Done ==="
@@ -218,6 +230,7 @@ echo "SQS queue:   ${QUEUE_NAME}"
 echo "SQS DLQ:     ${DLQ_NAME}"
 echo "Lambda 1:    ${LAMBDA_EXTRACTOR_NAME} (S3 → Textract → SQS)"
 echo "Lambda 2:    ${LAMBDA_STRUCTURER_NAME} (SQS → Bedrock → DynamoDB)"
+echo "Lambda 3:    ${LAMBDA_DLQ_HANDLER_NAME} (DLQ → DynamoDB status=failed)"
 echo ""
 echo "IAM role '${LAMBDA_ROLE_NAME}' must have permissions for:"
 echo "  textract:DetectDocumentText, sqs:SendMessage, sqs:ReceiveMessage,"
