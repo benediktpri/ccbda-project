@@ -49,7 +49,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filename: file.name, filetype: forcedFileType })
       });
-      const { uploadPost } = await res.json();
+      const { uploadPost, fileId } = await res.json();
 
       setStatus("Laddar upp dokument till AWS...");
       const formData = new FormData();
@@ -72,7 +72,7 @@ export default function Home() {
 
       setStatus("Bearbetar texten med AI (vänligen vänta)...");
       const poll = setInterval(async () => {
-        const r = await fetch(`${API_URL}/result?id=${file.name}`);
+        const r = await fetch(`${API_URL}/result?id=${fileId}`);
         const data = await r.json();
 
         if (data.Status === 'COMPLETED') {
