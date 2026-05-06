@@ -9,6 +9,7 @@ A cloud-native application that helps job seekers identify skills gaps by analyz
 ## Prerequisites
 
 - Python 3.13 ([uv](https://docs.astral.sh/uv/) recommended)
+- Docker (for DynamoDB Local)
 - Node.js 20+ (frontend)
 
 ## Project Structure
@@ -27,8 +28,12 @@ git clone https://github.com/benediktpri/ccbda-project.git
 cd ccbda-project/backend
 uv sync
 cp .env.example .env
+docker compose up -d
+uv run python scripts/create_table.py
 uv run uvicorn app.main:app --reload
 ```
+
+API docs available at http://localhost:8000/docs.
 
 See [backend/README.md](backend/README.md) for full details.
 

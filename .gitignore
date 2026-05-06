@@ -225,3 +225,7 @@ CLAUDE.md
 
 # zip for lambda
 *.zip
+
+
+# Temporary files
+.tmp/
