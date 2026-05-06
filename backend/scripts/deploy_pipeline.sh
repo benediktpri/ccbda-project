@@ -182,7 +182,12 @@ create_sqs
 
 echo "=== Step 3: Package Lambdas ==="
 package_lambda "text_extractor" "app/lambdas/text_extractor.py"
-package_lambda "profile_structurer" "app/lambdas/profile_structurer.py"
+
+echo "Generating extraction schema from Pydantic model"
+uv run python -c "from app.models.schemas import ExtractedProfile; import json, pathlib; pathlib.Path('/tmp/extraction_schema.json').write_text(json.dumps(ExtractedProfile.model_json_schema()))"
+echo "Packaging profile_structurer"
+rm -f /tmp/profile_structurer.zip
+zip -j /tmp/profile_structurer.zip app/lambdas/profile_structurer.py /tmp/extraction_schema.json >/dev/null
 
 echo "=== Step 4: Deploy Lambdas ==="
 deploy_lambda \

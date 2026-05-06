@@ -1,6 +1,7 @@
 import json
 import os
 from io import BytesIO
+from pathlib import Path
 from unittest.mock import patch
 
 import boto3
@@ -14,6 +15,18 @@ os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["DYNAMODB_TABLE_NAME"] = "AppTable"
 os.environ["BEDROCK_MODEL_ID"] = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+
+# Generate the schema file the Lambda expects to find next to itself
+_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "app" / "lambdas" / "extraction_schema.json"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _generate_schema():
+    from app.models.schemas import ExtractedProfile
+
+    _SCHEMA_PATH.write_text(json.dumps(ExtractedProfile.model_json_schema()))
+    yield
+    _SCHEMA_PATH.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -57,30 +70,32 @@ def _sqs_event(user_id, raw_text):
 VALID_BEDROCK_RESPONSE = {
     "content": [
         {
-            "type": "text",
-            "text": json.dumps(
-                {
-                    "first_name": "John",
-                    "last_name": "Doe",
-                    "email": "john@example.com",
-                    "location": "Stockholm",
-                    "languages": [{"language": "English", "level": "native"}],
-                    "skills": [{"name": "Python", "level": "advanced", "years": 5, "last_used": "2025-01"}],
-                    "experience": [
-                        {
-                            "title": "Software Engineer",
-                            "company": "TechCorp",
-                            "start": "2020-01",
-                            "end": None,
-                            "description": "Built APIs",
-                            "achievements": ["Improved latency by 40%"],
-                        }
-                    ],
-                    "education": [
-                        {"degree": "MSc", "field": "Computer Science", "institution": "KTH", "graduation_year": "2020"}
-                    ],
-                }
-            ),
+            "type": "tool_use",
+            "id": "toolu_test123",
+            "name": "extract_cv_data",
+            "input": {
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": "john@example.com",
+                "location": "Stockholm",
+                "willingness_to_relocate": True,
+                "target_compensation": None,
+                "languages": [{"language": "English", "level": "native"}],
+                "skills": [{"name": "Python", "level": "advanced", "years": 5, "last_used": "2025-01"}],
+                "experience": [
+                    {
+                        "title": "Software Engineer",
+                        "company": "TechCorp",
+                        "start": "2020-01",
+                        "end": None,
+                        "description": "Built APIs",
+                        "achievements": ["Improved latency by 40%"],
+                    }
+                ],
+                "education": [
+                    {"degree": "MSc", "field": "Computer Science", "institution": "KTH", "graduation_year": "2020"}
+                ],
+            },
         }
     ]
 }
@@ -102,12 +117,12 @@ class TestProfileStructurer:
         assert structured["first_name"] == "John"
         assert structured["last_name"] == "Doe"
         assert structured["skills"][0]["name"] == "Python"
+        assert structured["willingness_to_relocate"] is True
 
     @patch("app.lambdas.profile_structurer.bedrock")
-    def test_invalid_json_response_marks_failed(self, mock_bedrock, aws_resources):
-        mock_bedrock.invoke_model.return_value = {
-            "body": BytesIO(json.dumps({"content": [{"type": "text", "text": "not valid json {"}]}).encode())
-        }
+    def test_unexpected_response_format_marks_failed(self, mock_bedrock, aws_resources):
+        unexpected_response = {"content": [{"type": "text", "text": "I cannot parse this CV."}]}
+        mock_bedrock.invoke_model.return_value = {"body": BytesIO(json.dumps(unexpected_response).encode())}
 
         from app.lambdas.profile_structurer import lambda_handler
 

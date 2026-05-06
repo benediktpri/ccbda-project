@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 
 import boto3
 
@@ -16,39 +17,22 @@ MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "eu.anthropic.claude-haiku-4-5-202
 
 SYSTEM_PROMPT = """\
 You are a CV/resume parsing assistant. Extract structured information from the \
-provided CV text and return ONLY valid JSON matching this exact schema:
-
-{
-  "first_name": "string or null",
-  "last_name": "string or null",
-  "email": "string or null",
-  "location": "string or null",
-  "languages": [
-    {"language": "string", "level": "string or null"}
-  ],
-  "skills": [
-    {"name": "string", "level": "string or null",
-     "years": int or null, "last_used": "string or null"}
-  ],
-  "experience": [
-    {"title": "string", "company": "string or null",
-     "start": "string or null", "end": "string or null",
-     "description": "string or null", "achievements": ["string"]}
-  ],
-  "education": [
-    {"degree": "string", "field": "string or null",
-     "institution": "string or null",
-     "graduation_year": "string or null"}
-  ]
-}
+provided CV text using the extract_cv_data tool.
 
 Rules:
-- Return ONLY the JSON object, no markdown, no explanation
 - Use null for missing fields, empty arrays for missing lists
 - For skill level use: beginner, intermediate, advanced, expert
-- For language level use: basic, conversational, fluent, native
+- For language level use: basic, conversational, fluent, or native
 - Dates should be YYYY-MM format where possible
 - Achievements should be concise bullet points extracted from descriptions"""
+
+EXTRACTION_SCHEMA = json.loads((Path(__file__).parent / "extraction_schema.json").read_text())
+
+TOOL_DEFINITION = {
+    "name": "extract_cv_data",
+    "description": "Extract structured profile data from a CV/resume",
+    "input_schema": EXTRACTION_SCHEMA,
+}
 
 
 def _now() -> str:
@@ -72,6 +56,8 @@ def lambda_handler(event, context):
                     "messages": [{"role": "user", "content": f"Parse this CV:\n\n{raw_text}"}],
                     "max_tokens": 4096,
                     "temperature": 0.1,
+                    "tools": [TOOL_DEFINITION],
+                    "tool_choice": {"type": "tool", "name": "extract_cv_data"},
                 }
             )
 
@@ -83,14 +69,9 @@ def lambda_handler(event, context):
             )
 
             response_body = json.loads(response["body"].read())
-            content_text = response_body["content"][0]["text"].strip()
-            logger.info("Bedrock response received, length=%d", len(content_text))
-
-            if content_text.startswith("```"):
-                content_text = content_text.split("\n", 1)[1]
-                content_text = content_text.rsplit("```", 1)[0].strip()
-
-            structured_data = json.loads(content_text)
+            tool_use_block = next(block for block in response_body["content"] if block["type"] == "tool_use")
+            structured_data = tool_use_block["input"]
+            logger.info("Bedrock tool_use response received for user_id=%s", user_id)
 
             now = _now()
             item = {
@@ -104,8 +85,8 @@ def lambda_handler(event, context):
             table.put_item(Item=item)
             logger.info("Wrote structured profile for user_id=%s", user_id)
 
-        except json.JSONDecodeError:
-            logger.exception("Failed to parse Bedrock response as JSON for user_id=%s", user_id)
+        except (KeyError, StopIteration):
+            logger.exception("Unexpected Bedrock response format for user_id=%s", user_id)
             table.update_item(
                 Key={"PK": f"USER#{user_id}", "SK": "PROFILE#STRUCTURED"},
                 UpdateExpression="SET #s = :status, updated_at = :now",
