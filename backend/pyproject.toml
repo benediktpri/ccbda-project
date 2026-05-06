@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings",
     "boto3",
     "botocore[crt]",
+    "python-multipart>=0.0.27",
 ]
 
 [dependency-groups]
@@ -18,7 +19,7 @@ dev = [
     "httpx",
     "ruff",
     "pre-commit",
-    "moto[dynamodb]",
+    "moto[dynamodb,s3,sqs]",
 ]
 
 [tool.uv.sources]

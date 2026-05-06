@@ -1,0 +1,369 @@
+{
+  "$defs": {
+    "Compensation": {
+      "properties": {
+        "min": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minimum annual salary in whole units",
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum annual salary in whole units",
+          "title": "Max"
+        },
+        "currency": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "ISO 4217 currency code, e.g. EUR, USD",
+          "title": "Currency"
+        }
+      },
+      "title": "Compensation",
+      "type": "object"
+    },
+    "Education": {
+      "properties": {
+        "degree": {
+          "description": "Degree type, e.g. BSc, MSc, PhD, MBA",
+          "title": "Degree",
+          "type": "string"
+        },
+        "field": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Field of study, e.g. Computer Science",
+          "title": "Field"
+        },
+        "institution": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "University or school name",
+          "title": "Institution"
+        },
+        "graduation_year": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Graduation year as YYYY",
+          "title": "Graduation Year"
+        }
+      },
+      "required": [
+        "degree"
+      ],
+      "title": "Education",
+      "type": "object"
+    },
+    "Experience": {
+      "properties": {
+        "title": {
+          "description": "Job title, e.g. Software Engineer, Product Manager",
+          "title": "Title",
+          "type": "string"
+        },
+        "company": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Company or organization name",
+          "title": "Company"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start date in YYYY-MM format",
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End date in YYYY-MM format, null if current role",
+          "title": "End"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Brief role description",
+          "title": "Description"
+        },
+        "achievements": {
+          "description": "Concise bullet-point achievements",
+          "items": {
+            "type": "string"
+          },
+          "title": "Achievements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "Experience",
+      "type": "object"
+    },
+    "Language": {
+      "properties": {
+        "language": {
+          "description": "Language name, e.g. English, German, Mandarin",
+          "title": "Language",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Proficiency: basic, conversational, fluent, or native",
+          "title": "Level"
+        }
+      },
+      "required": [
+        "language"
+      ],
+      "title": "Language",
+      "type": "object"
+    },
+    "Skill": {
+      "properties": {
+        "name": {
+          "description": "Skill or technology name, e.g. Python, AWS, Project Management",
+          "title": "Name",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Proficiency: beginner, intermediate, advanced, or expert",
+          "title": "Level"
+        },
+        "years": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Years of experience with this skill",
+          "title": "Years"
+        },
+        "last_used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "When last used, in YYYY-MM format",
+          "title": "Last Used"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Skill",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "first_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Candidate's first/given name",
+      "title": "First Name"
+    },
+    "last_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Candidate's last/family name",
+      "title": "Last Name"
+    },
+    "email": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Contact email address",
+      "title": "Email"
+    },
+    "location": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Current city or region, e.g. Berlin, Germany",
+      "title": "Location"
+    },
+    "willingness_to_relocate": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Whether the candidate mentions willingness to relocate",
+      "title": "Willingness To Relocate"
+    },
+    "target_compensation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Compensation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Desired salary range if mentioned"
+    },
+    "languages": {
+      "description": "Spoken/written languages",
+      "items": {
+        "$ref": "#/$defs/Language"
+      },
+      "title": "Languages",
+      "type": "array"
+    },
+    "skills": {
+      "description": "Technical and professional skills",
+      "items": {
+        "$ref": "#/$defs/Skill"
+      },
+      "title": "Skills",
+      "type": "array"
+    },
+    "experience": {
+      "description": "Work experience, most recent first",
+      "items": {
+        "$ref": "#/$defs/Experience"
+      },
+      "title": "Experience",
+      "type": "array"
+    },
+    "education": {
+      "description": "Educational qualifications",
+      "items": {
+        "$ref": "#/$defs/Education"
+      },
+      "title": "Education",
+      "type": "array"
+    }
+  },
+  "title": "ExtractedProfile",
+  "type": "object"
+}

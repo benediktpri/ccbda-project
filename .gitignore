@@ -229,3 +229,6 @@ CLAUDE.md
 
 # Temporary files
 .tmp/
+
+# Local pipeline config (create from pipeline_env.example.sh)
+backend/scripts/pipeline_env.sh

@@ -6,37 +6,37 @@ from pydantic import BaseModel, Field
 
 
 class Language(BaseModel):
-    language: str
-    level: str | None = None
+    language: str = Field(description="Language name, e.g. English, German, Mandarin")
+    level: str | None = Field(default=None, description="Proficiency: basic, conversational, fluent, or native")
 
 
 class Skill(BaseModel):
-    name: str
-    level: str | None = None
-    years: int | None = None
-    last_used: str | None = None
+    name: str = Field(description="Skill or technology name, e.g. Python, AWS, Project Management")
+    level: str | None = Field(default=None, description="Proficiency: beginner, intermediate, advanced, or expert")
+    years: int | None = Field(default=None, description="Years of experience with this skill")
+    last_used: str | None = Field(default=None, description="When last used, in YYYY-MM format")
 
 
 class Experience(BaseModel):
-    title: str
-    company: str | None = None
-    start: str | None = None
-    end: str | None = None
-    description: str | None = None
-    achievements: list[str] = Field(default_factory=list)
+    title: str = Field(description="Job title, e.g. Software Engineer, Product Manager")
+    company: str | None = Field(default=None, description="Company or organization name")
+    start: str | None = Field(default=None, description="Start date in YYYY-MM format")
+    end: str | None = Field(default=None, description="End date in YYYY-MM format, null if current role")
+    description: str | None = Field(default=None, description="Brief role description")
+    achievements: list[str] = Field(default_factory=list, description="Concise bullet-point achievements")
 
 
 class Education(BaseModel):
-    degree: str
-    field: str | None = None
-    institution: str | None = None
-    graduation_year: str | None = None
+    degree: str = Field(description="Degree type, e.g. BSc, MSc, PhD, MBA")
+    field: str | None = Field(default=None, description="Field of study, e.g. Computer Science")
+    institution: str | None = Field(default=None, description="University or school name")
+    graduation_year: str | None = Field(default=None, description="Graduation year as YYYY")
 
 
 class Compensation(BaseModel):
-    min: int | None = None
-    max: int | None = None
-    currency: str | None = None
+    min: int | None = Field(default=None, description="Minimum annual salary in whole units")
+    max: int | None = Field(default=None, description="Maximum annual salary in whole units")
+    currency: str | None = Field(default=None, description="ISO 4217 currency code, e.g. EUR, USD")
 
 
 class JobLocation(BaseModel):
@@ -59,6 +59,24 @@ class MatchedSkill(BaseModel):
 class MissingSkill(BaseModel):
     name: str
     importance: str | None = None
+
+
+# --- Extraction Models (used by Bedrock tool_use) ---
+
+
+class ExtractedProfile(BaseModel):
+    first_name: str | None = Field(default=None, description="Candidate's first/given name")
+    last_name: str | None = Field(default=None, description="Candidate's last/family name")
+    email: str | None = Field(default=None, description="Contact email address")
+    location: str | None = Field(default=None, description="Current city or region, e.g. Berlin, Germany")
+    willingness_to_relocate: bool | None = Field(
+        default=None, description="Whether the candidate mentions willingness to relocate"
+    )
+    target_compensation: Compensation | None = Field(default=None, description="Desired salary range if mentioned")
+    languages: list[Language] = Field(default_factory=list, description="Spoken/written languages")
+    skills: list[Skill] = Field(default_factory=list, description="Technical and professional skills")
+    experience: list[Experience] = Field(default_factory=list, description="Work experience, most recent first")
+    education: list[Education] = Field(default_factory=list, description="Educational qualifications")
 
 
 # --- Request Models ---
@@ -147,3 +165,14 @@ class AnalysisResultResponse(BaseModel):
     missing_skills: list[MissingSkill] = Field(default_factory=list)
     recommendations: str | None = None
     created_at: datetime | None = None
+
+
+class UploadResponse(BaseModel):
+    upload_url: str
+    upload_fields: dict
+    s3_key: str
+
+
+class FileUploadResponse(BaseModel):
+    s3_key: str
+    message: str
