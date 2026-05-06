@@ -30,16 +30,16 @@ export default function Home() {
       if (droppedFile.type === 'application/pdf') {
         setFile(droppedFile);
       } else {
-        alert("Vänligen välj en PDF-fil.");
+        alert("Please select a PDF file.");
       }
     }
   };
 
   const handleUpload = async () => {
-    if (!file) return alert("Vänligen välj en fil först!");
+    if (!file) return alert("Please select a file first!");
 
     setIsLoading(true);
-    setStatus("Hämtar säker länk...");
+    setStatus("Getting secure link...");
     setResult('');
     const forcedFileType = 'application/pdf';
 
@@ -51,7 +51,7 @@ export default function Home() {
       });
       const { uploadPost, fileId } = await res.json();
 
-      setStatus("Laddar upp dokument till AWS...");
+      setStatus("Uploading document to AWS...");
       const formData = new FormData();
 
       Object.entries(uploadPost.fields).forEach(([key, value]) => {
@@ -65,12 +65,12 @@ export default function Home() {
       });
 
       if (!uploadRes.ok) {
-        setStatus("Ett fel uppstod vid S3-uppladdningen.");
+        setStatus("An error occurred during the S3 upload.");
         setIsLoading(false);
         return;
       }
 
-      setStatus("Bearbetar texten med AI (vänligen vänta)...");
+      setStatus("Processing text with AI (please wait)...");
       const poll = setInterval(async () => {
         const r = await fetch(`${API_URL}/result?id=${fileId}`);
         const data = await r.json();
@@ -87,21 +87,21 @@ export default function Home() {
             const parsedAnalysis = JSON.parse(cleanJson);
             setResult(parsedAnalysis);
           } catch (e) {
-            console.error("Kunde inte tolka JSON från Bedrock:", e);
+            console.error("Could not parse JSON from Bedrock:", e);
             setResult({ raw: data.ai_analysis });
           }
           setStatus("");
           setIsLoading(false);
           clearInterval(poll);
         } else if (data.Status === 'FAILED_AI') {
-          setStatus("Ett fel uppstod under AI-analysen.");
+          setStatus("An error occurred during the AI analysis.");
           setIsLoading(false);
           clearInterval(poll);
         }
       }, 3000);
     } catch (error) {
       console.error(error);
-      setStatus("Ett fel uppstod: " + error.message);
+      setStatus("An error occurred: " + error.message);
       setIsLoading(false);
     }
   };
@@ -111,10 +111,10 @@ export default function Home() {
       <main className="max-w-3xl w-full">
         <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-4">
-            Ladda upp CV
+            Upload CV
           </h1>
           <p className="text-zinc-600 font-medium text-lg">
-            Välj eller släpp din PDF-fil nedan för att extrahera texten.
+            Choose or drop your PDF file below to extract the text.
           </p>
         </div>
 
@@ -142,10 +142,10 @@ export default function Home() {
             </svg>
             <div>
               <p className="text-zinc-900 font-bold text-xl mb-1">
-                {file ? file.name : "Dra och släpp din PDF här"}
+                {file ? file.name : "Drag and drop your PDF here"}
               </p>
               <p className="text-zinc-500 font-medium">
-                {file ? "Klicka för att byta fil" : "eller klicka för att bläddra"}
+                {file ? "Click to change file" : "or click to browse"}
               </p>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function Home() {
               : 'bg-zinc-900 text-white hover:bg-zinc-800 cursor-pointer shadow-lg shadow-zinc-200 hover:shadow-xl hover:shadow-zinc-200 hover:-translate-y-0.5'
               }`}
           >
-            {isLoading ? 'Bearbetar...' : 'Ladda upp & Läs'}
+            {isLoading ? 'Processing...' : 'Upload & Analyze'}
           </button>
         </div>
 
@@ -172,17 +172,17 @@ export default function Home() {
 
         {result && (
           <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full text-left max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-center">AI-Analys av CV</h2>
+            <h2 className="text-2xl font-bold mb-6 text-center">AI CV Analysis</h2>
             <div className="p-8 bg-zinc-50 rounded-[2rem] border border-zinc-100 shadow-sm space-y-6">
               {result.summary && (
                 <div>
-                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Sammanfattning</h3>
+                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Summary</h3>
                   <p className="text-zinc-700 leading-relaxed">{result.summary}</p>
                 </div>
               )}
               {result.top_skills && result.top_skills.length > 0 && (
                 <div>
-                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Toppfärdigheter</h3>
+                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Top Skills</h3>
                   <div className="flex flex-wrap gap-2">
                     {result.top_skills.map((skill, i) => (
                       <span key={i} className="px-3 py-1 bg-zinc-200 text-zinc-800 rounded-full text-sm font-medium">
@@ -194,13 +194,13 @@ export default function Home() {
               )}
               {result.improvement_tip && (
                 <div>
-                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Förbättringstips</h3>
+                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Improvement Tips</h3>
                   <p className="text-zinc-700 leading-relaxed">{result.improvement_tip}</p>
                 </div>
               )}
               {result.raw && (
                 <div>
-                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Rådata från AI</h3>
+                  <h3 className="text-xl font-bold text-zinc-900 mb-2">Raw AI Output</h3>
                   <p className="text-zinc-700 leading-relaxed whitespace-pre-wrap">{result.raw}</p>
                 </div>
               )}

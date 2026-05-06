@@ -248,7 +248,12 @@ ensure_route_and_integration() {
     | head -n 1)
 
   if [ -n "${route_exists}" ] && [ "${route_exists}" != "null" ]; then
-    echo "Route already exists: ${route_key}"
+    echo "Route already exists: ${route_key}, updating target..."
+    aws apigatewayv2 update-route \
+      --api-id "${API_ID}" \
+      --route-id "${route_exists}" \
+      --target "integrations/${integration_id}" \
+      --region "${REGION}" >/dev/null
   else
     echo "Creating route: ${route_key}"
     aws apigatewayv2 create-route \
