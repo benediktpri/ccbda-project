@@ -1,7 +1,6 @@
 import json
 import os
 from io import BytesIO
-from pathlib import Path
 from unittest.mock import patch
 
 import boto3
@@ -15,18 +14,6 @@ os.environ["AWS_SECURITY_TOKEN"] = "testing"
 os.environ["AWS_SESSION_TOKEN"] = "testing"
 os.environ["DYNAMODB_TABLE_NAME"] = "AppTable"
 os.environ["BEDROCK_MODEL_ID"] = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
-
-# Generate the schema file the Lambda expects to find next to itself
-_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "app" / "lambdas" / "extraction_schema.json"
-
-
-@pytest.fixture(autouse=True, scope="session")
-def _generate_schema():
-    from app.models.schemas import ExtractedProfile
-
-    _SCHEMA_PATH.write_text(json.dumps(ExtractedProfile.model_json_schema()))
-    yield
-    _SCHEMA_PATH.unlink(missing_ok=True)
 
 
 @pytest.fixture

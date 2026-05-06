@@ -226,9 +226,6 @@ CLAUDE.md
 # zip for lambda
 *.zip
 
-# Generated schema for Lambda packaging
-backend/app/lambdas/extraction_schema.json
-
 
 # Temporary files
 .tmp/
