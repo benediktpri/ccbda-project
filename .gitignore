@@ -2,7 +2,7 @@
 __pycache__/
 *.py[codz]
 *$py.class
-
+.DS_Store
 # C extensions
 *.so
 
@@ -221,3 +221,7 @@ CLAUDE.md
 
 # VS Code
 .vscode/
+
+
+# zip for lambda
+*.zip

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CV Textract App</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; }
+        #result { white-space: pre-wrap; background: #eee; padding: 20px; margin-top: 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Ladda upp CV</h1>
+    <input type="file" id="fileInput" accept="application/pdf">
+    <button onclick="uploadFile()">Ladda upp & Läs</button>
+    <div id="status"></div>
+    <div id="result">Text visas här...</div>
+
+    <script>
+        const API_URL = "https://zytk1qo4ai.execute-api.eu-west-1.amazonaws.com/production";
+
+        async function uploadFile() {
+            const file = document.getElementById('fileInput').files[0];
+            if(!file) return alert("Välj fil!");
+
+            document.getElementById('status').innerText = "Hämtar säker länk...";
+            const forcedFileType = 'application/pdf';
+
+            // 1. Hämta Presigned POST-data från Lambda
+            const res = await fetch(`${API_URL}/upload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: file.name, filetype: forcedFileType })
+            });
+            const { uploadPost } = await res.json();
+
+            // 2. Skapa ett formulär för uppladdningen
+            document.getElementById('status').innerText = "Laddar upp dokument till AWS...";
+            const formData = new FormData();
+            
+            // AWS kräver att alla fält läggs till innan själva filen
+            Object.entries(uploadPost.fields).forEach(([key, value]) => {
+                formData.append(key, value);
+            });
+            formData.append('file', file);
+
+            // POST-uppladdning (inga manuella headers behövs!)
+            const uploadRes = await fetch(uploadPost.url, { 
+                method: 'POST', 
+                body: formData 
+            });
+
+            if (!uploadRes.ok) {
+                document.getElementById('status').innerText = "Ett fel uppstod vid S3-uppladdningen.";
+                return;
+            }
+
+            // 3. Poll efter resultat
+            document.getElementById('status').innerText = "Bearbetar texten med Textract (vänta)...";
+            const poll = setInterval(async () => {
+                const r = await fetch(`${API_URL}/result?id=${file.name}`);
+                const data = await r.json();
+                
+                if(data.Status === 'COMPLETED') {
+                    document.getElementById('result').innerText = data.Content;
+                    document.getElementById('status').innerText = "Klart!";
+                    clearInterval(poll);
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
