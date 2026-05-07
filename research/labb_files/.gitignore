@@ -1,0 +1,8 @@
+# Serverless build files
+.serverless/
+
+# Dependencies
+node_modules/
+
+# Environment variables (sensitive info)
+.env
