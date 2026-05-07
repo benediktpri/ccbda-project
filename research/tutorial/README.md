@@ -1,4 +1,4 @@
-# Lab Session #X: Multi-Cloud Serverless Deployment
+# Lab Session #X: Deployment of Serverless Application using the Serverless Framework
 In this lab, you will explore the Serverless Framework to deploy serverless applications in an easy way. You will learn how to handle infrastructure as code (IaC), manage cloud permissions, and use development tools for real-time debugging.
 
 ## Objectives
@@ -7,16 +7,20 @@ In this lab, you will explore the Serverless Framework to deploy serverless appl
 - Understand the 
 
 ## Pre-lab homework
-Setup a user for this task. Navigate to the AWS Console and create a new user with Programmatic Access. Attach the following managed policies:
+Setup a user for this task. Navigate to the AWS Console and create a new user with Programmatic Access. To the user Attach the following managed policies:
 
 - AmazonAPIGatewayAdministrator
+- AmazonDynamoDBFullAccess
 - AmazonS3FullAccess
-- AmazonDynamoDBFullAccess (Required for our database tasks)
+- AmazonSSMFullAccess
 - AWSCloudFormationFullAccess
+- AWSIoTConfigReadOnlyAccess
+- AWSIoTDataAccess
 - AWSLambda_FullAccess
+- CloudWatchLogsFullAccess
 - IAMFullAccess
 
-Generate an Access Key and Secret Key for this user. Store them safely; you will not be able to see the Secret Key again.
+Generate an Access Key and Secret Key for this user. Store them safely..
 
 Link your local machine to your AWS account and your new Access Key and Secret Key: 
 
@@ -29,13 +33,13 @@ _$ aws configure
 
 ## Background information
 
-Serverless Framework: The Serverless Framework is a powerful, open-source command-line tool that allows you to build, deploy, and manage serverless applications across multiple cloud providers (like AWS, Azure, and Google Cloud)
+Serverless Framework: The Serverless Framework is a powerful, open-source command-line tool that allows you to build, deploy, and manage serverless applications across multiple cloud providers (like AWS, Azure, and Google Cloud). The Serverless Framework is mainly 
 
 ## Lab Tasks Overview
 - Task x.1: Install and set up Serverless Framework
 - Task x.2: Initial Deployment to AWS
 - Task x.3  Development and debugging using Serverless Frameworks dev function
-- Task x.4  Deploy application to Google Cloud
+- Task x.4  Remove the deployment from the Cloud. 
 
 
 ## Task 1.1: Install and set up Serverless Framework
