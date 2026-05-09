@@ -1,0 +1,20 @@
+org: ccbda
+app: serverless-labs
+service: research-project-tutorial
+
+provider:
+  name: google
+  runtime: nodejs22
+  region: europe-west1
+  project: your-gcp-project-id  
+  credentials: ./gcp-key.json    
+
+plugins:
+  - serverless-google-functions
+
+functions:
+  apiHandler:
+    handler: hello            
+    events:
+      - http: path              
+

@@ -1,144 +1,222 @@
 # Lab Session #X: Deployment of Serverless Application using the Serverless Framework
-In this lab, you will explore the Serverless Framework to deploy serverless applications in an easy way. You will learn how to handle infrastructure as code (IaC), manage cloud permissions, and use development tools for real-time debugging.
-
-## Objectives
-- Deploy a serverless application to AWS and Azure
-- Use serverless dev to debug cloud-to-code connectivity issues
-- Understand the 
+In this lab session, you will explore the Serverless Framework to deploy cloud-based applications efficiently. Instead of manual server management, you will use Infrastructure as Code (IaC) to define resources, manage cloud permissions, and utilize modern development tools for real-time debugging.
 
 ## Pre-lab homework
-Setup a user for this task. Navigate to the AWS Console and create a new user with Programmatic Access. To the user Attach the following managed policies:
+This should be done before the lab session. 
 
-- AmazonAPIGatewayAdministrator
-- AmazonDynamoDBFullAccess
-- AmazonS3FullAccess
-- AmazonSSMFullAccess
-- AWSCloudFormationFullAccess
-- AWSIoTConfigReadOnlyAccess
-- AWSIoTDataAccess
-- AWSLambda_FullAccess
-- CloudWatchLogsFullAccess
-- IAMFullAccess
+### 1. Download the code
+Download the [serverless-framework repository]() as a ZIP file and add it to your project repository. 
 
-Generate an Access Key and Secret Key for this user. Store them safely..
+### 2. Create a Account for Serverless Framework
+To use the Serverless Framework for deployments and monitoring, you first need to create a cloud account. Follow this [link to the Serverless Framework](https://app.serverless.com/) to sign up and create your user profile.
 
-Link your local machine to your AWS account and your new Access Key and Secret Key: 
+## Objectives
+* Deploy a serverless application to AWS: Learn to automate the provisioning of Lambda functions, API Gateway, and DynamoDB.
 
+* Master Real-time Debugging: Use serverless dev to bridge your local environment with the cloud for instant feedback and live logging.
 
-```bash
-_$ aws configure
-```
-.
+* Implement Infrastructure as Code (IaC): Understand how cloud architecture and IAM permissions are defined in the serverless.yml configuration file.
 
+* Manage Cloud Lifecycle: Practice the full process of scaffolding, updating, and safely removing cloud resources via the CLI.
 
-## Background information
+## Background Information
+**Serverless computing** allows you to build and run applications without the burden of managing servers. Instead of provisioning hardware, you deploy code that scales automatically, and you only pay for the exact resources your code consumes. This labs builds up on the Lab about [Serverless Application](https://github.com/CCBDA-UPC/Assignments-2026_spring/blob/main/Lab06.md) threre to concept of **serverless applications** was introducedand, this labs focuses on how to simplify and optimize the developer workflow using the Serverless Framework. 
 
-Serverless Framework: The Serverless Framework is a powerful, open-source command-line tool that allows you to build, deploy, and manage serverless applications across multiple cloud providers (like AWS, Azure, and Google Cloud). The Serverless Framework is mainly 
+### 1. What is the Serverless Framework?
+The Serverless Framework acts as a powerful abstraction layer that sits on top of cloud providers, such as AWS. Instead of requiring you to manually log into the AWS Management Console and use "point and click" methods to create resources as we did in the [Serverless Application Lab](https://github.com/CCBDA-UPC/Assignments-2026_spring/blob/main/Lab06.md), the tool functions as a bridge that translates your requirements into cloud infrastructure.
+
+This is achieved through Infrastructure as Code (IaC). IaC means that you define your entire IT environment, including everything from databases and servers to security permissions, in the form of configuration files. In this lab, you will use the serverless.yml file for this purpose. By defining your infrastructure as code, the entire setup becomes versionable, repeatable, and automated. This minimizes the risk of human error and allows you to deploy the exact same environment over and over again with a single command.
+
+### 2. Why use the Serverless Framework?
+The primary goal of using a framework is to move away from administrative tasks and focus on building features. Below are the key advantages of this approach:
+
+* **Focus on Business Logic**: Instead of spending hours configuring operating systems, patching servers, or setting up scaling policies, developers can focus entirely on writing the code (Functions) that delivers value to the user.
+
+* **Automated Orchestration**: The framework handles the "plumbing" of your application. It automatically creates the necessary triggers (Events) and provisions the required backend tools (Resources), such as databases or storage buckets, ensuring they are correctly connected.
+
+* **Enhanced Developer Experience (DX)**: Modern tools like serverless dev synchronize your local code changes with the cloud in seconds. This provides a fast feedback loop with live logging and real-time debugging, which is significantly more efficient than traditional deployment cycles.
+
+* **Security and Compliance**: By defining Identity and Access Management (IAM) permissions directly in your code, you ensure that your application follows the principle of least privilege. This makes security a part of the development process rather than an afterthought.
+
+### 3. Comparison: Manual Console vs. Serverless Framework
+| Feature | Manual AWS Console | Serverless Framework (IaC) |
+| :--- | :--- | :--- |
+| **Deployment Speed** | Slow; requires dozens of manual clicks and uploads. | Rapid; the entire stack is deployed with one command. |
+| **Consistency** | High risk of human error and configuration mistakes. | Guaranteed; the same code always creates the exact same environment. |
+| **Documentation** | Infrastructure settings are hidden inside various menus. | The `serverless.yml` file acts as live documentation of the system. |
+| **Scaling the Setup** | Hard to replicate for testing or production. | Effortless; use "stages" to clone the environment in seconds. |
 
 ## Lab Tasks Overview
-- Task x.1: Install and set up Serverless Framework
-- Task x.2: Initial Deployment to AWS
-- Task x.3  Development and debugging using Serverless Frameworks dev function
-- Task x.4  Remove the deployment from the Cloud. 
+- Task 1.1: Enable your laptop to access AWS resources
+- Task 1.2: Install and configure the Serverless Framework
+- Task 1.3: Initial Deployment to AWS using the Serverless Framework
+- Task 1.4  Development and debugging using Serverless Framework
+- Task 1.5: Multi-Cloud Theoretical Comparison
+- Task 1.6: How to Submit this Assignment
 
+# Task 1.1: Enable your laptop to access AWS resources
+Using the AWS console, create a new programmatic user named serverless_framework_user. This account will be used by the Serverless Framework on your laptop to provision resources in your AWS account. 
 
-## Task 1.1: Install and set up Serverless Framework
+### 1. Create the IAM user and generate Access Keys
+1. **Log in** to the [AWS Management Console](https://console.aws.amazon.com/).
+2. **Navigate to IAM**: Search for **IAM** (Identity and Access Management) and select **IAM Users** > **Create user**.
+3. **User details**: Name the user `serverless_framework_user` and click **Next**.
+4. **Set permissions**: 
+    * Select **Attach policies directly**
+    * Search for and select **IAMFullAccess** by checking the box to the left. 
+    * *Note: This allows your CLI to manage other permissions later.*
+5. **Create User**:, now press **Create** to create the user.
 
-Install the framework globally using npm
+### 2. Create Access Keys
+There will now be a new user named `serverless_framework_user` that can be found in the list under **IAM users**. Now we will **Generate Keys** for the user: 
+
+1. Click on your newly created user in the list. **Go to** the **Security credentials** tab.
+2. **Scroll down** to the **Access keys** section and click **Create access key**.
+3. **Select CLI**: Choose **Command Line Interface (CLI)** as the use case.
+4. **Download credentials**: Click **Next** and then **Download .csv file** or copy both the **Access Key ID** and **Secret Access Key**.
+    
+> [!WARNING]
+> **Store safely**: This is the only time you can view the Secret Access Key. You will not be able to see it again once you leave this page.
+
+### 3. IAM Configuration
+Ensure that you have the ASW CLI installed on your machine. Then configure your local environment with the credentials obtained from the AWS Console:
+```bash
+_$ aws configure
+AWS Access Key ID [None]: <YOUR-AWS-ACCESS-KEY-ID>
+AWS Secret Access Key [None]: <YOUR-AWS-SECRET-ACCESS-KEY>
+Default region name [None]: eu-west-1
+Default output format [None]: json
+```
+### 4. Verify identity
+Run the following command to verify that your CLI is correctly linked to the new user:
+
+```bash
+_$ aws sts get-caller-identity
+```
+### 5. Granting Necessary Permissions
+To allow the Serverless Framework to manage your infrastructure, you need to attach a set of managed policies to your user.
+
+Run the following commands in your terminal to attach the required policies to `serverless_framework_user`:
+```bash
+# Define the username
+_$ USER_NAME="serverless_framework_user"
+
+# Attach required policies
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AmazonSSMFullAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AWSIoTConfigReadOnlyAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AWSIoTDataAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/AWSLambda_FullAccess
+_$ aws iam attach-user-policy --user-name ${USER_NAME} --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+```
+### 6. Verify Attached Policies
+Finally, confirm that all policies have been successfully attached:
+
+```bash
+_$ aws iam list-attached-user-policies --user-name ${USER_NAME}
+```
+ 
+# Task 1.2: Install and configure the Serverless Framework
+In the previous task, you successfully linked your laptop to your AWS account. Now, it is time to install and configure the **Serverless Framework**.
+
+### 1. Prerequisites: Node.js and npm
+Before installing the Serverless Framework, you must have **Node.js** installed on your machine. Check if you have it downloaded by running: 
+
+```bash
+_$ node -v
+_$ npm -v
+```
+**If not installed**: Go to [nodejs.org](https://nodejs.org/en/download/package-manager) and download the **LTS (Long Term Support)** version. Run the installer and follow the instructions. After installation, restart your terminal to ensure `npm` is recognized.
+
+### 2. Install the Serverless Framework
+Now it is time to install the framework itself. We will use npm to install it globally on your machine so that you can run the serverless command from any folder.
 
 ```bash
 _$ npm install -g serverless
 ```
+Once the installation is complete, check that it's working by asking for the version number: 
+```bash
+_$ serverless --version
+```
+You should see a version number (e.g., 4.x.x) and some information about your environment. 
 
-## Create an account
-Create an account at app.serverless.com.
-In your terminal, run the login command:
+>[!IMPORTANT] Ensure you are using Version 4.x or higher. > Version 4 is required to support the latest features, such as Serverless Dev Mode which will be used later in this lab. 
 
+### 3. Login to Serverless Framework account
+You previously created an account at app.serverless.com (if not see instructions at **Prelab-homework**). Now, you need to authenticate your terminal so it can communicate with your dashboard. Run the command:
 ```bash
 _$ serverless login
 ```
-Your browser will open automatically. Confirm the login to link your terminal to your Serverless account.
+Your default browser will open automatically and take you to the Serverless login page. If you not already logged into the website login to your account. Once the browser says **Login successful**, you can close the tab and return to your terminal. Your terminal will update automatically to confirm that you are now linked to your account. 
 
-> [!Tip]
-> Logging in to the Serverless Dashboard is not the same as configuring AWS. The dashboard manages your deployments and logs, while AWS credentials manage the physical resources.
+# Task 1.3: Initial Deployment to AWS using the Serverless Framework
+In this part of the lab, we will use a boilerplate (a pre-made template) provided by the Serverless Framework. This allows you to quickly set up the foundational structure of your application without writing everything from scratch.
 
-## Link AWS Credentials to Serverless
+### 1. Generate Boilerplate
 
-Now that you are logged in to the Serverless Framework, you must ensure it can communicate with your AWS account. By default, the framework looks for the "default" profile you created earlier when running `aws configure`.
-
-To verify that the Serverless Framework correctly sees your AWS identity and is ready to deploy, run:
-
+1. In the terminal make sure that you stand in the project mapp `lab-code`. If not navigate to it:
 ```bash
-_$ serverless doctor
+_$ cd lab-code
 ```
-
-## Task 2: Initial Deployment to AWS
-
-In this task, we will perform our first deployment. Stand in the root of the project and run: 
-
-
+2. Run the command `_$ serverless`, this will show you the diffrent templates avaiabel.
 ```bash
 _$ serverless
 ```
-Then use the arrow keys to navigate and select
+3. Select the template named: `AWS / Node.js / HTTP API` and press **Enter**.
 
+4. Name your project: `serverless-project-tutorial`.
+
+5. Select **Create App** and name it **serverless-labs**.
+
+### 2. Understanding the core components
+After completing the setup, a new folder named serverless-project-tutorial has been created inside your lab-code directory. Open this folder in your code editor and you will find the files **serverless.yml** and **handler.js**, togheter they form a complete cloud application.
+
+* **serverless-yml**: This file acts as the architect's drawing for your AWS infrastructure. It tells the Serverless Framework to create the components defined in the `serverless.yml` file inside aws. We will soon take a closer look at the content of `serverless.yml` file to get an better understanding of hor it works. 
+
+* **handler.js**: This file contains the logic of the program that will be executed by a Lambda function. 
+
+### 3. Deployment of Application
+Now it time to actualy deploy this application to **AWS** using the serverless framework:
+
+1. **Navigate to folder**: Make sure that you stand in the directory where your `serverless.yml` file is located. 
 ```bash
-_$ AWS / Node.js / HTTP API
+_$ cd serverless-project-tutorial
 ```
-and press Enter.
-
-When prompted for a name, type research-project-tutorial and press Enter.
-
-If the CLI asks if you want to log in or register the project with the Serverless Dashboard, select Yes. 
-
-After completing the setup, the Serverless Framework has automatically created a new directory named research-project-tutorial.Inside this folder, you will find two main files that form the core of your service:
-
-1. serverless.yml: This is the "brain" of your project. It contains the configuration that tells AWS how to set up your infrastructure (Functions, APIs, Databases).
-
-2. handler.js: This is where your code lives. It contains the logic that will be executed whenever your function is triggered.
-
-## Deploying the Service
-
-You must now enter the folder: 
-
-```bash
-cd research-project-tutorial
-```
-
-The files that were just generated contain a basic "Hello World" program that is already fully functional. Before we customize the code for our research project, we will deploy this boilerplate to AWS to ensure your cloud environment is correctly configured.
-
-In your terminal, run the following command to package and upload your application to the cloud:
-
+2. **Deploy the application**: Run the following command to start the deployment process: (usually takes 1-2 minutes)
 ```bash
 _$ serverless deploy
 ```
+3. **Your endpoint**: Once the deployment is finished, look at the output in your terminal. Under the endpoints section, you will see a URL. 
+    * Click the URL or Copy and Pase it into your web browser.
+4. If the deployment was successful, you will see a JSON message confirming that your function is live in the cloud:
+```json
+{"message":"Go Serverless v4! Your function executed successfully!"}
+```
+### 4. Verify in the AWS Management Console
+Now that your app is live, let’s look "under the hood" to see what the Serverless Framework actually built for you in the AWS cloud. This step is crucial to understand how the `serverless.yml` was translated into real resources.
 
-What is happening?
-The Serverless Framework is now creating the necessary infrastructure on AWS (like Lambda functions and an API Gateway) to host your code in a production-like environment.
+1. Go to the [AWS Management Console](https://aws.amazon.com/console/) and sign in to your account. 
+2. Search for **CloudFormation** in the AWS Console search bar.
+3. In the list of "Stacks," find the one named `serverless-project-tutorial-dev`. This is the collection of all resources created for your project.
+4. Click on the stack name and navigate to the **Resources** tab. Here you can see all the resources for the deployed application.
+>:question: **Question 1**: Provide a screenshot of the Resources tab for your deployment. Ensure the columns "Logical ID" and "Type" are visible.
 
-## Verify the Deployment:
-Once the process finishes, look for the endpoint URL in your terminal output.
+>:question: **Question 2**: In your serverless.yml file, you only defined one function under the functions section. However, in the CloudFormation list, you see several resources related to Lambda (e.g., ApiHandlerLambdaFunction, LambdaPermission, and IamRoleLambdaExecution). Why do you think AWS creates these "extra" resources instead of just the function itself?
 
-1. Copy the URL.
-2. Paste it into your browser.
-3. You should see a successful JSON message from your live AWS Lambda function!
+## Task 1.4: Development and debugging using Serverless Framework
+In this section, we will transform our simple "Hello World" function into a fully functional Serverless Web Application.
 
-Since you are logged in, the Serverless Framework automatically syncs your deployment with the cloud dashboard. This allows you to monitor your functions, view logs, and track metrics.
-
-Go to app.serverless.com and log in.
-
-You should now see your service research-project-tutorial listed in the overview.
-
-Click on the service to explore the deployment history and the active endpoints.
-
-:question: Question 1: Provide a screenshot of your Service Overview in the Serverless Framework Dashboard. Does the dashboard show the same endpoint URL as your terminal did?
-
-## TASK3: Development and debugging using Serverless Framework
-In this section we will update our application with some more functionality, first we will go through the main components of the yml file.
-
-Replace the current content of your serverless.yml with the following code:
+### 1. Update the serverless.yml file
+Replace the current content of your `serverless.yml` with the code below:
 
 ```yaml
+org: ccbda
+
+app: serverless-labs
+
 service: research-project-tutorial
 
 provider:
@@ -179,21 +257,28 @@ resources:
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
 ```
+### 2. serverless.yml file
+To work with Serverless framework you need to understand the fundamental pillars. They define how your code, triggers, and infrastructure work together in the cloud.
 
-The serverless.yml file is the blueprint of your entire cloud infrastructure. It is divided into three main sections that tell AWS what to build:
+* **Function**: A Function is the actual logic you write (e.g., in Node.js). In AWS, these are called Lambda functions. They are independent "microservices" that only run when called.
 
-* provider: Defines where your service will live. Here, we specify AWS, the version of Node.js we are using (nodejs20.x), and the physical location of the servers (eu-west-1 / Ireland).
+* **Events**: Events are what "wake up" your functions. A function does nothing until an event occurs. The framework automatically sets up the infrastructure (like an API Gateway) to connect the event to your code.
 
-* functions: Defines what code should run.
+* **Resources**: Resources are the external components your functions need to do their job. These are defined using AWS CloudFormation syntax.
 
-* The events section creates an HTTP API that triggers the code whenever someone visits the /data path.
+* **Service**: A Service is your entire project unit. It is defined by your `serverless.yml` file. Think of it as a container that holds your code and all the infrastructure it needs. When you deploy, the entire service is uploaded to AWS as a single "Stack."
 
-* resources: Defines extra tools your code needs.
+More documentation and information about these concepts and how they are used and defined to create serverless application can be find in the [documentation](https://www.serverless.com/framework/docs/providers/aws/guide/intro)
 
-> :question: **Question 2**: Look in the serverless.yml file and try to identify what type of AWS resource that is being defined by this configuration file?
 
-## Update Lambda logic
-Copy this Code into the handler.js, it contains the core logic of the applications Lambda function: 
+> :question: **Question 3**: Look in the serverless.yml file and try to identify what type of AWS resource that is being defined by this configuration file?
+
+> :question: **Question 4**: Look at the functions defined here, what is the name of the function? What specific URL path and HTTP method will trigger this function to execute?
+
+## 3. Update Lambda logic
+Now it’s time to breathe life into our application. We are going to replace the simple "Hello World" code with a much smarter function.
+
+Copy and paste this code into your handler.js file, replacing everything that was there before:
 
 ```javascript
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
@@ -257,8 +342,8 @@ module.exports.hello = async (event) => {
     }
 };
 ```
-## Create the Frontend User Interface
-The final piece of the puzzle is the user interface. Create a new file in your project folder named index.html and paste the code below.
+## 4. Create the Frontend User Interface
+The final piece of the puzzle is the user interface. Create a new file in your project folder named `index.html` and paste the code below.
 
 Copy this Code into the index.html: 
 ```html
@@ -352,21 +437,23 @@ Copy this Code into the index.html:
 </body>
 </html>
 ```
-
-When this is done run its time to deploy our new application to the cloud with serverless deploy:
-
+### 5. Deploy the new application
+Now is it time to deploy and test out the new apllication.
+1. Make sure that all the files are saved.
+2. Make sure you navigate to the map with the `serverless.yml` file. 
+```bash
+_$ cd serverless-project-tutorial
+```
+3. Run the `serverless deploy` command: 
 ```bash
 _$ serverless deploy
 ```
+4. Open up the URL given in the terminal and test out the new application.
 
-## The dev tool
-To test this code we will use the serverless Frameworks dev functionality which is a powerful hybrid development tool that connects your local machine directly to your live AWS environment using the command: 
+> :question: **Question 5**: Is there something with the application that dosent seems to work as intended?
 
-```bash
-_$ serverless dev
-```
-
-It gives you the speed of local development combined with the reality of running your code in the cloud.
+### 6. The development tool
+To test this code we will use the serverless Frameworks dev functionality which is a powerful hybrid development tool that connects your local machine directly to your live AWS environment.It gives you the speed of local development combined with the reality of running your code in the cloud.
 
 * Hybrid Execution: Your AWS Lambda functions are modified to proxy events from the cloud directly to your local machine.
 
@@ -374,68 +461,89 @@ It gives you the speed of local development combined with the reality of running
 
 * Live Logs: All logs and errors from your code are streamed directly to your terminal, making it much easier to identify and fix bugs as they happen.
 
-Before we can use the development mode, we need to ensure that our local environment has the necessary libraries to communicate with DynamoDB. We can do this by installing: 
+### 7. Setting up the enviroment
+Before we can use the development mode, we need to ensure that our local environment has the necessary libraries to communicate with DynamoDB. We can ensure this by installing with the commands below: 
 
 ```bash
 _$ npm install @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
 ```
-Make sure that you have saved the files: 
-* index.html
-* handler.js
-* serverless.yml
-
-Now run the serverless dev command to start the devlopment mode:
-
+### 8. Start the development mode
+To start the develop environment simply run the command:
 ```bash
 _$ serverless dev
 ```
-Press the URL given in the terminal to interact with your application. 
-Try to save something and as you might notice logs are now printing in your dev enviroment, read the error that accurs when you try to save something to the database.
+### 9. Testing and debugging
+1. **Open the Application**: Click the URL provided in the terminal to open your Serverless Storage interface in your browser. 
+2. Test to interact with the application.
 
-> :question: **Question 3**: What seems to be the problem when you try to save something by pressing "Save" in the user interface?
+> :question: **Question 6**: Provide an screenshot of the error messages being printed in the terminal while interacting with the application.
 
+### 10. Solve the Bug in Real-Time
+The power of **Dev Mode** is that you can fix errors instantly. You don't need to restart the terminal or run a new deploy.Look at the error message being printed in the terminal and try to solve it.
 
-As you might can tell from the logs there is an error with the name given to our table. This can be adjusted by changing line 45 to the following:
+> [!Hint] There is one variable named ErrorName in the handler.js file?...
 
-```javascript
-    await docClient.send(new PutCommand({
-                TableName: tableName,  // <-- Change ErrorName to this
-                Item: item
-            }));
-```
+Correct the error and save the file. Now interact with the application again and checks the logs. Dose everything look okay? In that case you can go ut from the **Dev Mode** using `Ctrl + C` or `Cmd + C`
 
-Save the changes in the handler.js file and try to interact and save a new value with the interface. You should hopefully see that its works now!
+### 11. Final deploy
+Now when we are sure of that the code is working we want the deploy the working version to our product.Run the command: 
 
-## Final production deployment
-
-While serverless dev is excellent for testing and fixing permissions in real-time, it is meant for development only. Once you have fixed the bug in the code and verified that the database connection works, you should perform a final deployment to ensure your stack is stable and fully synchronized.
-
-1. Stop the dev mode by pressing Ctrl + C in your terminal.
-
-2. Run the final deployment command:
 ```bash
 _$ serverless deploy
 ```
+> :question: **Question 7**: What is the diffrence between serverless dev and serverless deploy commands? 
 
->:question: Question 7: What is the main difference between serverless dev and serverless deploy? When would you use one over the other in a professional development environment?
+> :question: **Question 8**: Describe your experience using Dev Mode to fix the bug compared to the serverless deploy process you did earlier. How long did it take for the change to take effect, and how does this affect your workflow as a developer? 
+
+# Task 1.5: Multi-Cloud Theoretical Comparison
+While the Serverless Framework is compatible with multiple cloud providers—such as Google Cloud Platform (GCP) and Azure, it is important to understand that "provider-agnostic" does not mean your code will work everywhere without modification.
+
+In this task, we will perform a theoretical comparison between AWS and GCP (Google Cloud). We have chosen not to perform a live deployment on Google Cloud due to the significant administrative overhead of setting up new accounts and billing. However, the most critical architectural insights can be gained by comparing the configuration and code side-by-side.
+
+### 1. Analyzing the Comparison Files
+Navigate to the folder `lab-code/google-cloud-version/`. Inside this folder, you will find the configuration and logic required to deploy the exact same functionality that you just built for AWS. Think of this as a "translation" of your current application into the Google Cloud ecosystem.
+Open these files and compare them side-by-side with your working AWS files (serverless.yml and handler.js):
+* **serverless-gcp.yml**: How the infrastructure (Provider, Functions, Events) is defined for Google.
+* **handler-gcp.js**: How the application logic (Request handling, Database SDK) is written for Google.
+
+> :question: **Question 9**: After comparing the two cloud services, can you identify any differences between their handler and configuration files? Describe at least one specific difference you observed in how they are defined.
 
 
-## Cleaning Up Resources
-When you are done with your AWS deployment, you should remove the resources to ensure you don't consume any more of your credits.
+### 2. Serverless Framework is an abstraction layer
+The Serverless Framework acts as an abstraction layer. This means it provides a consistent interface (the CLI and the general YAML structure) regardless of which cloud provider you use.
 
-Running the serverless remove command will tell CloudFormation to delete everything it created: the Lambda functions, the API Gateway, the IAM roles, and the DynamoDB table
+* **What is unifined**: The framework make it possible to use the same commands (e.g `serverless deploy`) and same high-level concepts ( e.g `functions`, `events`,`resources`). This allows a team to use the same deployment pipeline and developer tools for both AWS and Google Cloud.
 
+* **What is provider-dependent**: The framework cannot hide the fact that cloud provider are built differently. For example we can see that AWS Lambda expects an event object, while Google Cloud Functions expect req/res objects. Similarly, Amazon’s DynamoDB and Google’s Firestore have different APIs.
+
+**Conclusion**: Even though the Serverless Framework provides a unified abstraction layer, it is not a "magic converter." While it standardizes the developer workflow (how you deploy), it cannot standardize the underlying architecture (how the cloud works).
+
+As a developer, you still need to adapt your logic and configurations to the specific provider's DNA. Switching from AWS to Google Cloud will always require manual changes to the code and infrastructure because you are moving between two fundamentally different ecosystems.
+
+>:question: **Question 10**: If you were to migrate 100 functions from AWS to Google Cloud, what part of the process would be the most time-consuming? (The deployment command or the code refactoring?)
+
+# Task 1.6: Cleaning up Resources
+Now when we have completed the lab we want to remove our application from the cloud to not waste credits. This can be done using the command:
+
+1. Navigate so you stand in the same folder as your `serverless.yml` file you used to **deploy** your application to AWS.
+
+2. Run the commando to remove the resources from the cloud:
 ```bash
 _$ serverless remove
-```
+``` 
+Running the serverless remove command will tell CloudFormation to delete everything it created: the Lambda functions, the API Gateway, the IAM roles, and the DynamoDB table. 
 
-### Verification
-
+### 3. Verify the deltion:
 1. Go back to the AWS Console.
 
 2. Check CloudFormation -> The stack tutorial-project-dev should be gone (or in status DELETE_COMPLETE).
 
-3. Check DynamoDB -> Verify that the table has been removed.
+# Task 1.7: How to Submit this Assignment:
 
->:question: Question 6: Why is it considered "Best Practice" to use serverless remove instead of manually deleting the Lambda function or the Database in the AWS Console? What happens to the "Stack" if you delete parts of it manually?
+> :question: **Question 11**: How many hours did you spend on the lab?
 
+> :question: **Question 12**: Which challanges did you run into during the lab and how did you overcome them?
+
+Make sure that you have updated your local GitHub repository (using the git commands add, commit, and push) with all the files generated during this session.
+
+Add all the web application files to your repository and comment what you think is relevant in your session's README.md.
