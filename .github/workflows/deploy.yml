@@ -9,7 +9,7 @@ env:
   AWS_PAGER: ""
   EB_APP_NAME: ccbda-backend
   EB_ENV_NAME: ccbda-backend-prod
-  EB_PLATFORM: "64bit Amazon Linux 2023 v4.4.4 running Docker"
+  EB_PLATFORM: "64bit Amazon Linux 2023 v4.12.3 running Docker"
   S3_DEPLOY_BUCKET: ccbda-deploy-artifacts
   FRONTEND_BUCKET: ccbda-frontend-hosting
 
