@@ -58,6 +58,25 @@ EOF
         --attribute-names QueueArn --region "${AWS_REGION}" | jq -r '.Attributes.QueueArn')
 
     echo "Queue URL: ${QUEUE_URL}"
+
+    echo "Creating Job DLQ: ${JOB_DLQ_NAME}"
+    JOB_DLQ_URL=$(aws sqs create-queue --queue-name "${JOB_DLQ_NAME}" --region "${AWS_REGION}" | jq -r '.QueueUrl')
+    JOB_DLQ_ARN=$(aws sqs get-queue-attributes --queue-url "${JOB_DLQ_URL}" \
+        --attribute-names QueueArn --region "${AWS_REGION}" | jq -r '.Attributes.QueueArn')
+
+    echo "Creating Job main queue: ${JOB_QUEUE_NAME}"
+    cat > /tmp/sqs-job-attrs.json <<EOF
+{
+    "RedrivePolicy": "{\"deadLetterTargetArn\":\"${JOB_DLQ_ARN}\",\"maxReceiveCount\":\"3\"}",
+    "VisibilityTimeout": "120"
+}
+EOF
+    JOB_QUEUE_URL=$(aws sqs create-queue --queue-name "${JOB_QUEUE_NAME}" \
+        --attributes file:///tmp/sqs-job-attrs.json --region "${AWS_REGION}" | jq -r '.QueueUrl')
+    JOB_QUEUE_ARN=$(aws sqs get-queue-attributes --queue-url "${JOB_QUEUE_URL}" \
+        --attribute-names QueueArn --region "${AWS_REGION}" | jq -r '.Attributes.QueueArn')
+
+    echo "Job Queue URL: ${JOB_QUEUE_URL}"
 }
 
 package_lambda() {
@@ -130,22 +149,36 @@ configure_s3_notification() {
     function_arn=$(aws lambda get-function --function-name "${LAMBDA_EXTRACTOR_NAME}" \
         --region "${AWS_REGION}" | jq -r '.Configuration.FunctionArn')
 
-    echo "Configuring S3 notification → ${LAMBDA_EXTRACTOR_NAME}"
+    echo "Configuring S3 notifications → ${LAMBDA_EXTRACTOR_NAME}"
     aws s3api put-bucket-notification-configuration \
         --bucket "${S3_BUCKET_NAME}" \
         --notification-configuration "{
-            \"LambdaFunctionConfigurations\": [{
-                \"LambdaFunctionArn\": \"${function_arn}\",
-                \"Events\": [\"s3:ObjectCreated:*\"],
-                \"Filter\": {
-                    \"Key\": {
-                        \"FilterRules\": [
-                            {\"Name\": \"prefix\", \"Value\": \"profiles/\"},
-                            {\"Name\": \"suffix\", \"Value\": \".pdf\"}
-                        ]
+            \"LambdaFunctionConfigurations\": [
+                {
+                    \"LambdaFunctionArn\": \"${function_arn}\",
+                    \"Events\": [\"s3:ObjectCreated:*\"],
+                    \"Filter\": {
+                        \"Key\": {
+                            \"FilterRules\": [
+                                {\"Name\": \"prefix\", \"Value\": \"profiles/\"},
+                                {\"Name\": \"suffix\", \"Value\": \".pdf\"}
+                            ]
+                        }
+                    }
+                },
+                {
+                    \"LambdaFunctionArn\": \"${function_arn}\",
+                    \"Events\": [\"s3:ObjectCreated:*\"],
+                    \"Filter\": {
+                        \"Key\": {
+                            \"FilterRules\": [
+                                {\"Name\": \"prefix\", \"Value\": \"jobs/\"},
+                                {\"Name\": \"suffix\", \"Value\": \".pdf\"}
+                            ]
+                        }
                     }
                 }
-            }]
+            ]
         }" >/dev/null
 }
 
@@ -189,6 +222,12 @@ echo "Packaging profile_structurer"
 rm -f /tmp/profile_structurer.zip
 zip -j /tmp/profile_structurer.zip app/lambdas/profile_structurer.py /tmp/extraction_schema.json >/dev/null
 
+echo "Generating job extraction schema from Pydantic model"
+uv run python -c "from app.models.schemas import ExtractedJob; import json, pathlib; pathlib.Path('/tmp/job_extraction_schema.json').write_text(json.dumps(ExtractedJob.model_json_schema()))"
+echo "Packaging job_structurer"
+rm -f /tmp/job_structurer.zip
+zip -j /tmp/job_structurer.zip app/lambdas/job_structurer.py /tmp/job_extraction_schema.json >/dev/null
+
 package_lambda "dlq_handler" "app/lambdas/dlq_handler.py"
 
 echo "=== Step 4: Deploy Lambdas ==="
@@ -196,13 +235,20 @@ deploy_lambda \
     "${LAMBDA_EXTRACTOR_NAME}" \
     "/tmp/text_extractor.zip" \
     "text_extractor.lambda_handler" \
-    "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME},SQS_QUEUE_URL=${QUEUE_URL}" \
+    "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME},SQS_QUEUE_URL=${QUEUE_URL},JOB_SQS_QUEUE_URL=${JOB_QUEUE_URL}" \
     60
 
 deploy_lambda \
     "${LAMBDA_STRUCTURER_NAME}" \
     "/tmp/profile_structurer.zip" \
     "profile_structurer.lambda_handler" \
+    "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME},BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID}" \
+    120
+
+deploy_lambda \
+    "${LAMBDA_JOB_STRUCTURER_NAME}" \
+    "/tmp/job_structurer.zip" \
+    "job_structurer.lambda_handler" \
     "DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME},BEDROCK_MODEL_ID=${BEDROCK_MODEL_ID}" \
     120
 
@@ -220,17 +266,24 @@ configure_s3_notification
 echo "=== Step 6: SQS → Lambda 2 ==="
 ensure_sqs_event_mapping "${LAMBDA_STRUCTURER_NAME}" "${QUEUE_ARN}"
 
-echo "=== Step 7: DLQ → DLQ Handler ==="
+echo "=== Step 7: Job SQS → Job Structurer ==="
+ensure_sqs_event_mapping "${LAMBDA_JOB_STRUCTURER_NAME}" "${JOB_QUEUE_ARN}"
+
+echo "=== Step 8: DLQ → DLQ Handler ==="
 ensure_sqs_event_mapping "${LAMBDA_DLQ_HANDLER_NAME}" "${DLQ_ARN}"
+ensure_sqs_event_mapping "${LAMBDA_DLQ_HANDLER_NAME}" "${JOB_DLQ_ARN}"
 
 echo ""
 echo "=== Done ==="
-echo "S3 bucket:   ${S3_BUCKET_NAME}"
-echo "SQS queue:   ${QUEUE_NAME}"
-echo "SQS DLQ:     ${DLQ_NAME}"
-echo "Lambda 1:    ${LAMBDA_EXTRACTOR_NAME} (S3 → Textract → SQS)"
-echo "Lambda 2:    ${LAMBDA_STRUCTURER_NAME} (SQS → Bedrock → DynamoDB)"
-echo "Lambda 3:    ${LAMBDA_DLQ_HANDLER_NAME} (DLQ → DynamoDB status=failed)"
+echo "S3 bucket:       ${S3_BUCKET_NAME}"
+echo "Profile queue:   ${QUEUE_NAME}"
+echo "Profile DLQ:     ${DLQ_NAME}"
+echo "Job queue:       ${JOB_QUEUE_NAME}"
+echo "Job DLQ:         ${JOB_DLQ_NAME}"
+echo "Lambda 1:        ${LAMBDA_EXTRACTOR_NAME} (S3 → Textract → SQS)"
+echo "Lambda 2:        ${LAMBDA_STRUCTURER_NAME} (SQS → Bedrock → DynamoDB)"
+echo "Lambda 3:        ${LAMBDA_JOB_STRUCTURER_NAME} (SQS → Bedrock → DynamoDB)"
+echo "Lambda 4:        ${LAMBDA_DLQ_HANDLER_NAME} (DLQ → DynamoDB status=failed)"
 echo ""
 echo "IAM role '${LAMBDA_ROLE_NAME}' must have permissions for:"
 echo "  textract:DetectDocumentText, sqs:SendMessage, sqs:ReceiveMessage,"

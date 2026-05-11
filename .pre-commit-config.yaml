@@ -8,8 +8,8 @@ repos:
   - repo: local
     hooks:
       - id: check-extraction-schema
-        name: Check extraction_schema.json is up to date
+        name: Check extraction schemas are up to date
         entry: uv run --directory backend python scripts/check_extraction_schema.py
         language: system
-        files: (schemas\.py|extraction_schema\.json)$
+        files: (schemas\.py|extraction_schema\.json|job_extraction_schema\.json)$
         pass_filenames: false

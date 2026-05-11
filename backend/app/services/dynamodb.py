@@ -146,10 +146,16 @@ def update_profile_structured(user_id: str, fields: dict) -> dict | None:
 
 
 def create_job_raw(
-    user_id: str, raw_text: str | None, source_type: str, s3_key: str | None = None, source_url: str | None = None
+    user_id: str,
+    raw_text: str | None,
+    source_type: str,
+    s3_key: str | None = None,
+    source_url: str | None = None,
+    job_id: str | None = None,
 ) -> dict:
     table = _get_table()
-    job_id = _new_id()
+    if not job_id:
+        job_id = _new_id()
     now = _now()
     raw_status = "ready" if source_type == "text" else "pending"
     raw_item = {

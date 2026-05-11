@@ -1,17 +1,58 @@
-from fastapi import APIRouter, HTTPException, status
+import json
+import logging
+import uuid
 
-from app.models.schemas import CreateJobRequest, JobListItem, JobResponse, JobStatusResponse
+import boto3
+from botocore.config import Config
+from fastapi import APIRouter, HTTPException, UploadFile, status
+
+from app.config import settings
+from app.models.schemas import (
+    CreateJobRequest,
+    JobFileUploadResponse,
+    JobListItem,
+    JobResponse,
+    JobStatusResponse,
+    JobUploadResponse,
+)
 from app.services import dynamodb
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+MAX_FILE_SIZE = 10 * 1024 * 1024
+
+
+def _get_sqs_client():
+    return boto3.client("sqs", region_name=settings.aws_region)
+
+
+def _get_s3_client():
+    return boto3.client(
+        "s3",
+        region_name=settings.aws_region,
+        config=Config(signature_version="s3v4"),
+    )
+
+
+def _send_to_structurer(user_id: str, job_id: str, raw_text: str):
+    if not settings.job_processing_queue_url:
+        logger.warning("job_processing_queue_url not configured, skipping SQS send for job_id=%s", job_id)
+        return
+    sqs = _get_sqs_client()
+    sqs.send_message(
+        QueueUrl=settings.job_processing_queue_url,
+        MessageBody=json.dumps({"user_id": user_id, "job_id": job_id, "raw_text": raw_text}),
+    )
+    logger.info("Sent job structuring message for user_id=%s, job_id=%s", user_id, job_id)
 
 
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
 def create_job(user_id: str, body: CreateJobRequest):
     if body.source_type == "text" and not body.raw_text:
         raise HTTPException(status_code=400, detail="raw_text is required for text source type")
-    if body.source_type == "url" and not body.source_url:
-        raise HTTPException(status_code=400, detail="source_url is required for url source type")
+    if body.source_type == "pdf":
+        raise HTTPException(status_code=400, detail="Use /jobs/upload or /jobs/upload-file for PDF uploads")
 
     item = dynamodb.create_job_raw(
         user_id=user_id,
@@ -19,7 +60,91 @@ def create_job(user_id: str, body: CreateJobRequest):
         source_type=body.source_type,
         source_url=body.source_url,
     )
+
+    if body.source_type == "text" and body.raw_text:
+        _send_to_structurer(user_id, item["job_id"], body.raw_text)
+
     return {"job_id": item["job_id"], "status": item["status"]}
+
+
+@router.post("/jobs/upload", response_model=JobUploadResponse)
+def upload_job_pdf(user_id: str):
+    user = dynamodb.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    job_id = str(uuid.uuid4())
+    s3_key = f"jobs/{user_id}/{job_id}.pdf"
+
+    s3 = _get_s3_client()
+    presigned = s3.generate_presigned_post(
+        Bucket=settings.s3_bucket_name,
+        Key=s3_key,
+        Fields={"Content-Type": "application/pdf"},
+        Conditions=[
+            {"Content-Type": "application/pdf"},
+            ["content-length-range", 1, MAX_FILE_SIZE],
+        ],
+        ExpiresIn=3600,
+    )
+
+    dynamodb.create_job_raw(
+        user_id=user_id,
+        raw_text=None,
+        source_type="pdf",
+        s3_key=s3_key,
+        job_id=job_id,
+    )
+
+    logger.info("Generated job upload URL for user_id=%s, job_id=%s", user_id, job_id)
+
+    return JobUploadResponse(
+        job_id=job_id,
+        upload_url=presigned["url"],
+        upload_fields=presigned["fields"],
+        s3_key=s3_key,
+    )
+
+
+@router.post("/jobs/upload-file", response_model=JobFileUploadResponse)
+async def upload_job_file(user_id: str, file: UploadFile):
+    user = dynamodb.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File exceeds 10 MB limit")
+
+    job_id = str(uuid.uuid4())
+    s3_key = f"jobs/{user_id}/{job_id}.pdf"
+
+    s3 = _get_s3_client()
+    s3.put_object(
+        Bucket=settings.s3_bucket_name,
+        Key=s3_key,
+        Body=contents,
+        ContentType="application/pdf",
+    )
+
+    dynamodb.create_job_raw(
+        user_id=user_id,
+        raw_text=None,
+        source_type="pdf",
+        s3_key=s3_key,
+        job_id=job_id,
+    )
+
+    logger.info("Uploaded job file for user_id=%s, job_id=%s", user_id, job_id)
+
+    return JobFileUploadResponse(
+        job_id=job_id,
+        s3_key=s3_key,
+        message="Upload successful, processing started",
+    )
 
 
 @router.get("/jobs", response_model=list[JobListItem])
