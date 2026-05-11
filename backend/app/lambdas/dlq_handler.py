@@ -34,16 +34,22 @@ def lambda_handler(event, context):
         message_id = record.get("messageId", "unknown")
         receive_count = record.get("attributes", {}).get("ApproximateReceiveCount", "unknown")
 
+        if "job_id" in body:
+            sk = f"JOB#{body['job_id']}"
+        else:
+            sk = "PROFILE#STRUCTURED"
+
         logger.error(
-            "Message exhausted retries. user_id=%s, messageId=%s, receiveCount=%s",
+            "Message exhausted retries. user_id=%s, SK=%s, messageId=%s, receiveCount=%s",
             user_id,
+            sk,
             message_id,
             receive_count,
         )
 
         now = _now()
         table.update_item(
-            Key={"PK": f"USER#{user_id}", "SK": "PROFILE#STRUCTURED"},
+            Key={"PK": f"USER#{user_id}", "SK": sk},
             UpdateExpression="SET #s = :status, updated_at = :now, failure_reason = :reason, failed_at = :now",
             ExpressionAttributeNames={"#s": "status"},
             ExpressionAttributeValues={
@@ -52,6 +58,6 @@ def lambda_handler(event, context):
                 ":reason": f"Processing failed after all retries (messageId={message_id})",
             },
         )
-        logger.info("Marked PROFILE#STRUCTURED as failed for user_id=%s", user_id)
+        logger.info("Marked %s as failed for user_id=%s", sk, user_id)
 
     return {"statusCode": 200}

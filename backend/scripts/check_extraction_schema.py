@@ -1,27 +1,41 @@
-"""Pre-commit check: verify extraction_schema.json matches the Pydantic model."""
+"""Pre-commit check: verify extraction schemas match the Pydantic models."""
 
 import json
 import sys
 from pathlib import Path
 
-from app.models.schemas import ExtractedProfile
+from app.models.schemas import ExtractedJob, ExtractedProfile
 
-SCHEMA_PATH = Path(__file__).resolve().parent.parent / "app" / "lambdas" / "extraction_schema.json"
+SCHEMAS = [
+    (ExtractedProfile, Path(__file__).resolve().parent.parent / "app" / "lambdas" / "extraction_schema.json"),
+    (ExtractedJob, Path(__file__).resolve().parent.parent / "app" / "lambdas" / "job_extraction_schema.json"),
+]
 
-expected = json.dumps(ExtractedProfile.model_json_schema(), indent=2) + "\n"
+fix = "--fix" in sys.argv
+errors = False
 
-if not SCHEMA_PATH.exists():
-    print(f"ERROR: {SCHEMA_PATH} does not exist.")
-    print("Run: uv run python scripts/check_extraction_schema.py --fix")
-    sys.exit(1)
+for model, schema_path in SCHEMAS:
+    expected = json.dumps(model.model_json_schema(), indent=2) + "\n"
 
-actual = SCHEMA_PATH.read_text()
+    if not schema_path.exists():
+        if fix:
+            schema_path.write_text(expected)
+            print(f"Created {schema_path}")
+        else:
+            print(f"ERROR: {schema_path} does not exist.")
+            print("Run: uv run python scripts/check_extraction_schema.py --fix")
+            errors = True
+        continue
 
-if actual != expected:
-    if "--fix" in sys.argv:
-        SCHEMA_PATH.write_text(expected)
-        print(f"Updated {SCHEMA_PATH}")
-        sys.exit(0)
-    print(f"ERROR: {SCHEMA_PATH} is stale.")
-    print("Run: uv run python scripts/check_extraction_schema.py --fix")
+    actual = schema_path.read_text()
+    if actual != expected:
+        if fix:
+            schema_path.write_text(expected)
+            print(f"Updated {schema_path}")
+        else:
+            print(f"ERROR: {schema_path} is stale.")
+            print("Run: uv run python scripts/check_extraction_schema.py --fix")
+            errors = True
+
+if errors:
     sys.exit(1)

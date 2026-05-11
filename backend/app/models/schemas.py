@@ -40,14 +40,14 @@ class Compensation(BaseModel):
 
 
 class JobLocation(BaseModel):
-    office_locations: list[str] = Field(default_factory=list)
-    remote_policy: str | None = None
-    regions: list[str] = Field(default_factory=list)
+    office_locations: list[str] = Field(default_factory=list, description="Physical office locations mentioned")
+    remote_policy: str | None = Field(default=None, description="Remote work policy: remote, hybrid, or on-site")
+    regions: list[str] = Field(default_factory=list, description="Geographic regions or countries for the role")
 
 
 class JobSkill(BaseModel):
-    name: str
-    importance: str = "required"
+    name: str = Field(description="Skill or technology name")
+    importance: str = Field(default="required", description="Importance level: required, preferred, or nice-to-have")
 
 
 class MatchedSkill(BaseModel):
@@ -62,6 +62,18 @@ class MissingSkill(BaseModel):
 
 
 # --- Extraction Models (used by Bedrock tool_use) ---
+
+
+class ExtractedJob(BaseModel):
+    title: str | None = Field(default=None, description="Job title, e.g. Senior Backend Engineer")
+    company: str | None = Field(default=None, description="Company or organization name")
+    location: JobLocation | None = Field(default=None, description="Location and remote work details")
+    seniority: str | None = Field(
+        default=None, description="Seniority level: junior, mid, senior, lead, principal, director, VP, or C-level"
+    )
+    required_skills: list[JobSkill] = Field(
+        default_factory=list, description="Skills mentioned in the posting with their importance level"
+    )
 
 
 class ExtractedProfile(BaseModel):
@@ -171,6 +183,19 @@ class UploadResponse(BaseModel):
     upload_url: str
     upload_fields: dict
     s3_key: str
+
+
+class JobUploadResponse(BaseModel):
+    job_id: str
+    upload_url: str
+    upload_fields: dict
+    s3_key: str
+
+
+class JobFileUploadResponse(BaseModel):
+    job_id: str
+    s3_key: str
+    message: str
 
 
 class FileUploadResponse(BaseModel):

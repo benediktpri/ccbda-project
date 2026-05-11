@@ -65,7 +65,10 @@ cat > /tmp/lambda-policy.json <<EOF
             "Action": [
                 "s3:GetObject"
             ],
-            "Resource": "arn:aws:s3:::${S3_BUCKET_NAME}/profiles/*"
+            "Resource": [
+                "arn:aws:s3:::${S3_BUCKET_NAME}/profiles/*",
+                "arn:aws:s3:::${S3_BUCKET_NAME}/jobs/*"
+            ]
         },
         {
             "Sid": "DynamoDB",
@@ -94,7 +97,10 @@ cat > /tmp/lambda-policy.json <<EOF
                 "sqs:DeleteMessage",
                 "sqs:GetQueueAttributes"
             ],
-            "Resource": "arn:aws:sqs:${AWS_REGION}:${ACCOUNT_ID}:ccbda-cv-processing*"
+            "Resource": [
+                "arn:aws:sqs:${AWS_REGION}:${ACCOUNT_ID}:ccbda-cv-processing*",
+                "arn:aws:sqs:${AWS_REGION}:${ACCOUNT_ID}:ccbda-job-processing*"
+            ]
         },
         {
             "Sid": "Bedrock",

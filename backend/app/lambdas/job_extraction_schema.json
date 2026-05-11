@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "JobLocation": {
+      "properties": {
+        "office_locations": {
+          "description": "Physical office locations mentioned",
+          "items": {
+            "type": "string"
+          },
+          "title": "Office Locations",
+          "type": "array"
+        },
+        "remote_policy": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Remote work policy: remote, hybrid, or on-site",
+          "title": "Remote Policy"
+        },
+        "regions": {
+          "description": "Geographic regions or countries for the role",
+          "items": {
+            "type": "string"
+          },
+          "title": "Regions",
+          "type": "array"
+        }
+      },
+      "title": "JobLocation",
+      "type": "object"
+    },
+    "JobSkill": {
+      "properties": {
+        "name": {
+          "description": "Skill or technology name",
+          "title": "Name",
+          "type": "string"
+        },
+        "importance": {
+          "default": "required",
+          "description": "Importance level: required, preferred, or nice-to-have",
+          "title": "Importance",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "JobSkill",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Job title, e.g. Senior Backend Engineer",
+      "title": "Title"
+    },
+    "company": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Company or organization name",
+      "title": "Company"
+    },
+    "location": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/JobLocation"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Location and remote work details"
+    },
+    "seniority": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Seniority level: junior, mid, senior, lead, principal, director, VP, or C-level",
+      "title": "Seniority"
+    },
+    "required_skills": {
+      "description": "Skills mentioned in the posting with their importance level",
+      "items": {
+        "$ref": "#/$defs/JobSkill"
+      },
+      "title": "Required Skills",
+      "type": "array"
+    }
+  },
+  "title": "ExtractedJob",
+  "type": "object"
+}
