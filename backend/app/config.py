@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     dynamodb_endpoint_url: str | None = None
     s3_bucket_name: str = "ccbda-app-bucket"
     job_processing_queue_url: str | None = None
+    bedrock_model_id: str = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
     environment: str = "dev"
 
     model_config = {"env_file": ".env", "extra": "ignore"}
