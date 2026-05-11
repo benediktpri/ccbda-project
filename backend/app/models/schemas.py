@@ -52,13 +52,28 @@ class JobSkill(BaseModel):
 
 class MatchedSkill(BaseModel):
     name: str
-    user_level: str | None = None
-    job_requirement: str | None = None
+    user_level: str | None = Field(
+        default=None, description="Candidate's level: beginner, intermediate, advanced, expert"
+    )
+    job_requirement: str | None = Field(default=None, description="Job's requirement level or importance")
 
 
 class MissingSkill(BaseModel):
     name: str
-    importance: str | None = None
+    importance: str | None = Field(default=None, description="Importance: required, preferred, or nice-to-have")
+
+
+class AnalysisOutput(BaseModel):
+    match_score: int = Field(description="Overall alignment score 0-100", ge=0, le=100)
+    matched_skills: list[MatchedSkill] = Field(
+        default_factory=list, description="Skills the candidate has that match job requirements"
+    )
+    missing_skills: list[MissingSkill] = Field(
+        default_factory=list, description="Skills the job requires that the candidate lacks"
+    )
+    recommendations: str = Field(
+        description="Actionable advice addressed directly to the user (use you/your) on how to close gaps"
+    )
 
 
 # --- Extraction Models (used by Bedrock tool_use) ---
