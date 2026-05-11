@@ -1,0 +1,162 @@
+name: Deploy
+
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  AWS_REGION: eu-west-1
+  AWS_PAGER: ""
+  EB_APP_NAME: ccbda-backend
+  EB_ENV_NAME: ccbda-backend-prod
+  EB_PLATFORM: "64bit Amazon Linux 2023 v4.4.4 running Docker"
+  S3_DEPLOY_BUCKET: ccbda-deploy-artifacts
+  FRONTEND_BUCKET: ccbda-frontend-hosting
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Ensure EB application exists
+        run: |
+          EXISTING=$(aws elasticbeanstalk describe-applications \
+            --application-names "$EB_APP_NAME" \
+            --query 'Applications[0].ApplicationName' --output text 2>/dev/null || echo "None")
+          if [ "$EXISTING" = "None" ] || [ -z "$EXISTING" ]; then
+            aws elasticbeanstalk create-application \
+              --application-name "$EB_APP_NAME" \
+              --description "CCBDA FastAPI backend"
+          fi
+
+      - name: Check/recreate EB environment
+        run: |
+          ENV_STATUS=$(aws elasticbeanstalk describe-environments \
+            --application-name "$EB_APP_NAME" \
+            --environment-names "$EB_ENV_NAME" \
+            --query 'Environments[?Status!=`Terminated`].Status' \
+            --output text 2>/dev/null || echo "")
+
+          if [ -z "$ENV_STATUS" ]; then
+            echo "Environment terminated or missing — recreating..."
+            aws elasticbeanstalk create-environment \
+              --application-name "$EB_APP_NAME" \
+              --environment-name "$EB_ENV_NAME" \
+              --solution-stack-name "$EB_PLATFORM" \
+              --option-settings file://.github/eb-options.json \
+              --tier Name=WebServer,Type=Standard
+
+            echo "Waiting for environment to be ready..."
+            while true; do
+              STATUS=$(aws elasticbeanstalk describe-environments \
+                --application-name "$EB_APP_NAME" \
+                --environment-names "$EB_ENV_NAME" \
+                --query 'Environments[0].Status' --output text)
+              echo "Environment status: $STATUS"
+              [ "$STATUS" = "Ready" ] && break
+              sleep 30
+            done
+          else
+            echo "Environment exists with status: $ENV_STATUS"
+          fi
+
+      - name: Create source bundle and deploy
+        run: |
+          VERSION_LABEL="app-${GITHUB_REF_NAME}-$(date +%s)"
+          ZIP_FILE="/tmp/${VERSION_LABEL}.zip"
+
+          cd backend
+          zip -r "$ZIP_FILE" Dockerfile app/ pyproject.toml uv.lock .python-version README.md
+          cd ..
+
+          aws s3 cp "$ZIP_FILE" "s3://${S3_DEPLOY_BUCKET}/${VERSION_LABEL}.zip"
+
+          aws elasticbeanstalk create-application-version \
+            --application-name "$EB_APP_NAME" \
+            --version-label "$VERSION_LABEL" \
+            --source-bundle S3Bucket="$S3_DEPLOY_BUCKET",S3Key="${VERSION_LABEL}.zip"
+
+          aws elasticbeanstalk update-environment \
+            --application-name "$EB_APP_NAME" \
+            --environment-name "$EB_ENV_NAME" \
+            --version-label "$VERSION_LABEL"
+
+          echo "Waiting for deployment to complete..."
+          aws elasticbeanstalk wait environment-updated \
+            --application-name "$EB_APP_NAME" \
+            --environment-names "$EB_ENV_NAME"
+
+  deploy-lambdas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Deploy Lambda pipeline
+        run: ./scripts/deploy_pipeline.sh scripts/pipeline_env.example.sh
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+
+      - name: Deploy to S3
+        run: aws s3 sync out/ "s3://${FRONTEND_BUCKET}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*"

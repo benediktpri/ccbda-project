@@ -1,0 +1,42 @@
+[
+  {
+    "Namespace": "aws:autoscaling:launchconfiguration",
+    "OptionName": "InstanceType",
+    "Value": "t3.micro"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:environment",
+    "OptionName": "EnvironmentType",
+    "Value": "SingleInstance"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:application:environment",
+    "OptionName": "AWS_REGION",
+    "Value": "eu-west-1"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:application:environment",
+    "OptionName": "DYNAMODB_TABLE_NAME",
+    "Value": "AppTable"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:application:environment",
+    "OptionName": "S3_BUCKET_NAME",
+    "Value": "ccbda-app-bucket"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:application:environment",
+    "OptionName": "JOB_PROCESSING_QUEUE_URL",
+    "Value": "https://sqs.eu-west-1.amazonaws.com/980770221524/ccbda-job-processing"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:application:environment",
+    "OptionName": "BEDROCK_MODEL_ID",
+    "Value": "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  },
+  {
+    "Namespace": "aws:elasticbeanstalk:application:environment",
+    "OptionName": "ENVIRONMENT",
+    "Value": "production"
+  }
+]
