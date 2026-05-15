@@ -177,6 +177,8 @@ class JobListItem(BaseModel):
     company: str | None = None
     status: str
     source_type: str
+    seniority: str | None = None
+    location: JobLocation | None = None
     created_at: datetime | None = None
 
 

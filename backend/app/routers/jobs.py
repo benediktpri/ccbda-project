@@ -157,6 +157,8 @@ def list_jobs(user_id: str):
             company=item.get("company"),
             status=item["status"],
             source_type=item.get("source_type", "text"),
+            seniority=item.get("seniority"),
+            location=item.get("location"),
             created_at=item.get("created_at"),
         )
         for item in items

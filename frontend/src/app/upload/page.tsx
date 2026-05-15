@@ -1,16 +1,16 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { useUser } from '@/lib/useUser';
+import { useAuth } from '@/lib/useAuth';
 
 const POLL_INTERVAL = 3000;
-const MAX_POLLS = 40; // 2 minutes
+const MAX_POLLS = 40;
 
 type UploadStatus = 'idle' | 'uploading' | 'polling' | 'done' | 'error';
 
 export default function UploadPage() {
-    const { userId, loading: userLoading, error: userError } = useUser();
+    const { userId, loading: authLoading, isAuthenticated } = useAuth();
     const router = useRouter();
 
     const [file, setFile] = useState<File | null>(null);
@@ -18,6 +18,10 @@ export default function UploadPage() {
     const [message, setMessage] = useState('');
     const pollCount = useRef(0);
     const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) router.replace('/login');
+    }, [authLoading, isAuthenticated, router]);
 
     const stopPolling = () => {
         if (pollTimer.current) clearInterval(pollTimer.current);
@@ -45,7 +49,7 @@ export default function UploadPage() {
                     setMessage('Processing failed. Please re-upload your CV.');
                 }
             } catch {
-                // keep polling – transient network error
+                // keep polling on transient errors
             }
         },
         [router],
@@ -61,71 +65,69 @@ export default function UploadPage() {
             setStatus('polling');
             setMessage('Processing your CV…');
             pollTimer.current = setInterval(() => poll(userId), POLL_INTERVAL);
-            poll(userId); // first check immediately
+            poll(userId);
         } catch (err) {
             setStatus('error');
             setMessage((err as Error).message);
         }
     }
 
-    if (userLoading) return <p className="text-slate-500">Initialising…</p>;
-    if (userError) return <p className="text-red-500">Error: {userError}</p>;
+    if (authLoading) return <p className="text-slate-400">Initialising…</p>;
 
     const busy = status === 'uploading' || status === 'polling';
 
     return (
         <div className="max-w-lg mx-auto">
-            <h1 className="text-2xl font-bold text-slate-800 mb-6">Upload your CV</h1>
+            <h1 className="text-2xl font-bold text-slate-100 mb-6">Upload your CV</h1>
 
-            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 space-y-4">
                 <label className="block">
-                    <span className="text-sm font-medium text-slate-700">PDF file (max 10 MB)</span>
+                    <span className="text-sm font-medium text-slate-300">PDF file (max 10 MB)</span>
                     <input
                         type="file"
                         accept="application/pdf"
                         disabled={busy}
-                        onChange={(e) => {
+                        onChange={e => {
                             setFile(e.target.files?.[0] ?? null);
                             setStatus('idle');
                             setMessage('');
                         }}
-                        className="mt-1 block w-full text-sm text-slate-600
-              file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0
-              file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700
-              hover:file:bg-indigo-100 disabled:opacity-50"
+                        className="mt-1 block w-full text-sm text-slate-500
+                            file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0
+                            file:text-sm file:font-medium file:bg-slate-800 file:text-slate-300
+                            hover:file:bg-slate-700 disabled:opacity-50"
                     />
                 </label>
 
                 {file && (
-                    <p className="text-sm text-slate-500 truncate">
-                        Selected: <span className="font-medium text-slate-700">{file.name}</span>
+                    <p className="text-sm text-slate-400 truncate">
+                        Selected: <span className="font-medium text-slate-200">{file.name}</span>
                     </p>
                 )}
 
                 <button
                     onClick={handleUpload}
                     disabled={!file || busy}
-                    className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg font-medium
-            hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                     {busy ? 'Processing…' : 'Upload'}
                 </button>
 
                 {status === 'polling' && (
-                    <div className="flex items-center gap-3 text-sm text-slate-600">
+                    <div className="flex items-center gap-3 text-sm text-slate-400">
                         <Spinner />
                         <span>{message}</span>
                     </div>
                 )}
 
                 {status === 'done' && (
-                    <p className="text-green-600 font-medium text-sm">{message} Redirecting…</p>
+                    <p className="text-green-400 font-medium text-sm">{message} Redirecting…</p>
                 )}
 
-                {status === 'error' && <p className="text-red-500 text-sm">{message}</p>}
+                {status === 'error' && <p className="text-red-400 text-sm">{message}</p>}
             </div>
 
-            <p className="mt-4 text-xs text-slate-400">
+            <p className="mt-4 text-xs text-slate-500">
                 User ID: <code className="font-mono">{userId}</code>
             </p>
         </div>
@@ -135,7 +137,7 @@ export default function UploadPage() {
 function Spinner() {
     return (
         <svg
-            className="animate-spin h-4 w-4 text-indigo-600"
+            className="animate-spin h-4 w-4 text-indigo-400"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"

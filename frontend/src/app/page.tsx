@@ -5,7 +5,12 @@ import { useRouter } from 'next/navigation';
 export default function Home() {
     const router = useRouter();
     useEffect(() => {
-        router.replace('/upload');
+        const stored = localStorage.getItem('ccbda_auth');
+        if (stored) {
+            router.replace('/profile');
+        } else {
+            router.replace('/login');
+        }
     }, [router]);
     return null;
 }
