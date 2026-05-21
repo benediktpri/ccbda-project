@@ -38,29 +38,29 @@ function JobsContent() {
 type SortBy = 'date' | 'title' | 'company' | 'bestMatch';
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
-    { value: 'date',      label: 'Date added' },
-    { value: 'title',     label: 'Title A–Z' },
-    { value: 'company',   label: 'Company A–Z' },
+    { value: 'date', label: 'Date added' },
+    { value: 'title', label: 'Title A–Z' },
+    { value: 'company', label: 'Company A–Z' },
     { value: 'bestMatch', label: '⭐ Best match for me' },
 ];
 
 const REMOTE_OPTIONS = [
-    { value: '',         label: 'Any remote policy' },
-    { value: 'remote',   label: 'Remote' },
-    { value: 'hybrid',   label: 'Hybrid' },
-    { value: 'on-site',  label: 'On-site' },
+    { value: '', label: 'Any remote policy' },
+    { value: 'remote', label: 'Remote' },
+    { value: 'hybrid', label: 'Hybrid' },
+    { value: 'on-site', label: 'On-site' },
 ];
 
 const SENIORITY_OPTIONS = [
-    { value: '',           label: 'Any seniority' },
-    { value: 'junior',     label: 'Junior' },
-    { value: 'mid',        label: 'Mid' },
-    { value: 'senior',     label: 'Senior' },
-    { value: 'lead',       label: 'Lead' },
-    { value: 'principal',  label: 'Principal' },
-    { value: 'director',   label: 'Director' },
-    { value: 'vp',         label: 'VP' },
-    { value: 'c-level',    label: 'C-level' },
+    { value: '', label: 'Any seniority' },
+    { value: 'junior', label: 'Junior' },
+    { value: 'mid', label: 'Mid' },
+    { value: 'senior', label: 'Senior' },
+    { value: 'lead', label: 'Lead' },
+    { value: 'principal', label: 'Principal' },
+    { value: 'director', label: 'Director' },
+    { value: 'vp', label: 'VP' },
+    { value: 'c-level', label: 'C-level' },
 ];
 
 // ─── Jobs list ────────────────────────────────────────────────────────────────
@@ -101,19 +101,23 @@ function JobsList({ userId }: { userId: string }) {
         }
     }, [userId]);
 
-    useEffect(() => { loadJobs(); }, [loadJobs]);
+    useEffect(() => {
+        api.listJobs(userId)
+            .then(items => setJobs(items))
+            .catch(err => setError((err as Error).message))
+            .finally(() => setLoading(false));
+    }, [userId]);
 
     // ── load scores when Best Match selected ──
     useEffect(() => {
         if (sortBy !== 'bestMatch') return;
-        setLoadingScores(true);
         api.listResults(userId)
             .then((results: AnalysisResult[]) => {
                 const map: Record<string, number> = {};
                 for (const r of results) map[r.job_id] = Math.round((r.match_score ?? 0));
                 setScores(map);
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingScores(false));
     }, [sortBy, userId]);
 
@@ -264,7 +268,7 @@ function JobsList({ userId }: { userId: string }) {
                 </select>
                 <select
                     value={sortBy}
-                    onChange={e => setSortBy(e.target.value as SortBy)}
+                    onChange={e => { const next = e.target.value as SortBy; if (next === 'bestMatch') setLoadingScores(true); setSortBy(next); }}
                     className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                     {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -359,7 +363,7 @@ function JobDetail({ userId, jobId, onBack }: { userId: string; jobId: string; o
 
         api.getResult(userId, jobId)
             .then(setAnalysis)
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setLoadingAnalysis(false));
     }, [userId, jobId]);
 
@@ -566,7 +570,7 @@ function StrengthsWeaknesses({
                     {analysis.match_score !== undefined && (() => {
                         const score = Math.round(analysis.match_score);
                         const scoreColor = score >= 70 ? 'text-green-400' : score >= 40 ? 'text-amber-400' : 'text-red-400';
-                        const barColor   = score >= 70 ? 'bg-green-500'  : score >= 40 ? 'bg-amber-500'  : 'bg-red-500';
+                        const barColor = score >= 70 ? 'bg-green-500' : score >= 40 ? 'bg-amber-500' : 'bg-red-500';
                         return (
                             <div>
                                 <div className="flex justify-between text-sm mb-1.5">
@@ -608,7 +612,7 @@ function StrengthsWeaknesses({
                                 </p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {analysis.missing_skills.map((s, i) => {
-                                        const name       = typeof s === 'string' ? s : s.name;
+                                        const name = typeof s === 'string' ? s : s.name;
                                         const importance = typeof s === 'string' ? null : s.importance;
                                         return (
                                             <span key={i} className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-900/40 text-red-300 border border-red-800/50">
@@ -717,8 +721,8 @@ function JobCard({
 
     const scoreColor = score !== undefined
         ? score >= 70 ? 'bg-green-900/50 text-green-400 border-green-800/50'
-        : score >= 40 ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50'
-        : 'bg-red-900/50 text-red-400 border-red-800/50'
+            : score >= 40 ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50'
+                : 'bg-red-900/50 text-red-400 border-red-800/50'
         : '';
 
     return (

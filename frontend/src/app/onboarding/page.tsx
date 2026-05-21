@@ -48,10 +48,10 @@ export default function OnboardingPage() {
                     <div key={n} className="flex items-center gap-3">
                         <div
                             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${n < step
-                                    ? 'bg-indigo-600 text-white'
-                                    : n === step
-                                        ? 'bg-indigo-600 text-white ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950'
-                                        : 'bg-slate-800 text-slate-500 border border-slate-700'
+                                ? 'bg-indigo-600 text-white'
+                                : n === step
+                                    ? 'bg-indigo-600 text-white ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-950'
+                                    : 'bg-slate-800 text-slate-500 border border-slate-700'
                                 }`}
                         >
                             {n < step ? '✓' : n}
@@ -143,15 +143,15 @@ function Step1Upload({ userId, onNext }: { userId: string; onNext: () => void })
             <div>
                 <h2 className="text-2xl font-bold text-slate-100">Upload your CV</h2>
                 <p className="mt-1 text-slate-400">
-                    We'll extract your profile automatically. You can also skip this step.
+                    We&apos;ll extract your profile automatically. You can also skip this step.
                 </p>
             </div>
 
             <div className="bg-slate-900 rounded-2xl border border-slate-700 p-6 space-y-4">
                 <label
                     className={`flex flex-col items-center justify-center w-full h-36 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${file
-                            ? 'border-indigo-500 bg-indigo-950/30'
-                            : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
+                        ? 'border-indigo-500 bg-indigo-950/30'
+                        : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
                         } ${busy ? 'pointer-events-none opacity-50' : ''}`}
                 >
                     <input
@@ -440,9 +440,9 @@ function Step3Done({ onDone }: { onDone: () => void }) {
         <div className="text-center space-y-6">
             <div className="text-6xl">🎉</div>
             <div>
-                <h2 className="text-2xl font-bold text-slate-100">You're all set!</h2>
+                <h2 className="text-2xl font-bold text-slate-100">You&apos;re all set!</h2>
                 <p className="mt-2 text-slate-400">
-                    Your profile is ready. Let's find your next opportunity.
+                    Your profile is ready. Let&apos;s find your next opportunity.
                 </p>
             </div>
             <button
