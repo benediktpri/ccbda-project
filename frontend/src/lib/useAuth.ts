@@ -20,6 +20,7 @@ interface UseAuthReturn {
 
 export function useAuth(): UseAuthReturn {
     const [auth, setAuth] = useState<AuthData | null>(() => {
+        if (typeof window === 'undefined') return null;
         const stored = localStorage.getItem(KEY);
         if (stored) {
             try {

@@ -12,8 +12,8 @@ interface UseUserReturn {
 }
 
 export function useUser(): UseUserReturn {
-  const [userId, setUserId] = useState<string | null>(() => localStorage.getItem(KEY));
-  const [loading, setLoading] = useState(() => localStorage.getItem(KEY) === null);
+  const [userId, setUserId] = useState<string | null>(() => typeof window === 'undefined' ? null : localStorage.getItem(KEY));
+  const [loading, setLoading] = useState(() => typeof window === 'undefined' ? true : localStorage.getItem(KEY) === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
