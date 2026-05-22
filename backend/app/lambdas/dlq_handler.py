@@ -8,12 +8,14 @@ import boto3
 
 class _JsonFormatter(logging.Formatter):
     def format(self, record):
-        return json.dumps({
-            "timestamp": self.formatTime(record),
-            "level": record.levelname,
-            "message": record.getMessage(),
-            "logger": record.name,
-        })
+        return json.dumps(
+            {
+                "timestamp": self.formatTime(record),
+                "level": record.levelname,
+                "message": record.getMessage(),
+                "logger": record.name,
+            }
+        )
 
 
 logger = logging.getLogger()
