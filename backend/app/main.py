@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.logger import configure_logging
 from app.routers import jobs, profiles, results, upload, users
+
+configure_logging()
 
 app = FastAPI(title="CCBDA API", version="0.1.0")
 
