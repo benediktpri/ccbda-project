@@ -155,11 +155,10 @@ function JobsList({ userId }: { userId: string }) {
     async function handlePDFImport(file: File) {
         setUploading(true);
         try {
-            await api.uploadJobFile(userId, file);
-            await loadJobs();
+            const { job_id } = await api.uploadJobFile(userId, file);
+            router.push(`/jobs?id=${job_id}`);
         } catch (err) {
             alert(`Import failed: ${(err as Error).message}`);
-        } finally {
             setUploading(false);
         }
     }
@@ -331,7 +330,7 @@ function JobsList({ userId }: { userId: string }) {
             )}
 
             {pasteOpen && (
-                <PasteModal userId={userId} onClose={() => setPasteOpen(false)} onCreated={loadJobs} />
+                <PasteModal userId={userId} onClose={() => setPasteOpen(false)} onCreated={(jobId) => router.push(`/jobs?id=${jobId}`)} />
             )}
         </div>
     );
@@ -366,6 +365,31 @@ function JobDetail({ userId, jobId, onBack }: { userId: string; jobId: string; o
             .catch(() => { })
             .finally(() => setLoadingAnalysis(false));
     }, [userId, jobId]);
+
+    // Poll for job processing to complete when still pending/processing
+    const jobStatus = job?.status;
+    useEffect(() => {
+        if (!jobStatus || jobStatus === 'done' || jobStatus === 'error') return;
+
+        const timer = setInterval(async () => {
+            try {
+                const s = await api.getJobStatus(userId, jobId);
+                if (s.structured_status === 'done') {
+                    clearInterval(timer);
+                    const updated = await api.getJob(userId, jobId);
+                    setJob(updated);
+                } else if (s.structured_status === 'error') {
+                    clearInterval(timer);
+                    const updated = await api.getJob(userId, jobId);
+                    setJob(updated);
+                }
+            } catch {
+                // keep polling on transient errors
+            }
+        }, 3000);
+
+        return () => clearInterval(timer);
+    }, [jobStatus, userId, jobId]);
 
     async function handleAnalyzeJob() {
         setAnalyzingJob(true);
@@ -413,6 +437,14 @@ function JobDetail({ userId, jobId, onBack }: { userId: string; jobId: string; o
             <button onClick={onBack} className="text-sm text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
                 ← Back to Jobs
             </button>
+
+            {/* Processing banner */}
+            {(job.status === 'processing' || job.status === 'pending') && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-yellow-900/20 border border-yellow-800/50 text-yellow-300 text-sm">
+                    <Spinner />
+                    <span>Extracting job details — this usually takes a few seconds…</span>
+                </div>
+            )}
 
             <div className="bg-slate-900 rounded-2xl border border-slate-700 p-6">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -640,7 +672,7 @@ function StrengthsWeaknesses({
 
 // ─── Paste text modal ─────────────────────────────────────────────────────────
 
-function PasteModal({ userId, onClose, onCreated }: { userId: string; onClose: () => void; onCreated: () => void }) {
+function PasteModal({ userId, onClose, onCreated }: { userId: string; onClose: () => void; onCreated: (jobId: string) => void }) {
     const [text, setText] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -652,8 +684,8 @@ function PasteModal({ userId, onClose, onCreated }: { userId: string; onClose: (
         setSubmitting(true);
         setError(null);
         try {
-            await api.createJob(userId, trimmed);
-            onCreated();
+            const { job_id } = await api.createJob(userId, trimmed);
+            onCreated(job_id);
             onClose();
         } catch (err) {
             setError((err as Error).message);

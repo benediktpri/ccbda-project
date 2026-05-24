@@ -101,6 +101,11 @@ export interface JobResponse extends JobListItem {
   updated_at?: string | null;
 }
 
+export interface JobStatusResponse {
+  raw_status: string | null;
+  structured_status: string | null;
+}
+
 export interface AnalysisResult {
   job_id: string;
   match_score: number;
