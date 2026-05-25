@@ -44,15 +44,13 @@ function parseJwt(token: string) {
 export function useAuth(): UseAuthReturn {
     const [auth, setAuth] = useState<AuthData | null>(() => {
         if (typeof window === 'undefined') return null;
-        const stored = localStorage.getItem(KEY);
-        if (stored) {
-            try {
-                return JSON.parse(stored) as AuthData;
-            } catch {
-                localStorage.removeItem(KEY);
-            }
+        try {
+            const stored = localStorage.getItem(KEY);
+            return stored ? (JSON.parse(stored) as AuthData) : null;
+        } catch {
+            localStorage.removeItem(KEY);
+            return null;
         }
-        return null;
     });
     const [loading, setLoading] = useState(false);
 

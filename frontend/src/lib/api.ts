@@ -4,6 +4,7 @@ import type {
   ProfileResponse,
   JobListItem,
   JobResponse,
+  JobStatusResponse,
   AnalysisResult,
 } from './types';
 
@@ -94,6 +95,9 @@ export const api = {
 
   deleteJob: (userId: string, jobId: string): Promise<null> =>
     request<null>(`/users/${userId}/jobs/${jobId}`, { method: 'DELETE' }),
+
+  getJobStatus: (userId: string, jobId: string): Promise<JobStatusResponse> =>
+    request<JobStatusResponse>(`/users/${userId}/jobs/${jobId}/status`),
 
   // Analysis
   analyzeJob: (userId: string, jobId: string): Promise<unknown> =>

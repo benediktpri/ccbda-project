@@ -47,7 +47,7 @@ export default function LoginPage() {
                 if (userId) {
                     try {
                         const status = await api.getProfileStatus(userId);
-                        if (status.structured_status === 'done' || status.raw_status === 'done') {
+                        if (status.structured_status === 'ready' || status.raw_status === 'ready') {
                             router.replace('/profile');
                             return;
                         }

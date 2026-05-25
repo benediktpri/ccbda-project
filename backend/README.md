@@ -37,10 +37,10 @@ In the AWS Console, go to **Bedrock → Model access** (region: `eu-west-1`) and
 ### 4. Prepare the pipeline environment file
 
 ```bash
-cp pipeline_env.example.sh pipeline_env.sh
+cp scripts/pipeline_env.example.sh scripts/pipeline_env.sh
 ```
 
-Edit `pipeline_env.sh` if you want to change resource names. Defaults are fine for a first run, but S3 bucket names must be globally unique. If bucket creation fails, change `S3_BUCKET_NAME` to something unique, for example:
+Edit `scripts/pipeline_env.sh` if you want to change resource names. Defaults are fine for a first run, but S3 bucket names must be globally unique. If bucket creation fails, change `S3_BUCKET_NAME` to something unique, for example:
 
 ```bash
 S3_BUCKET_NAME=ccbda-app-bucket-yourname
@@ -51,7 +51,7 @@ The same file is used by the Lambda/SQS/S3 setup and the Cognito setup script.
 ### 5. Create the IAM role for Lambdas
 
 ```bash
-./scripts/create_lambda_role.sh pipeline_env.sh
+./scripts/create_lambda_role.sh scripts/pipeline_env.sh
 ```
 
 This creates `ccbda-lambda-role` with permissions for Textract, S3, DynamoDB, SQS, Bedrock, and CloudWatch.
@@ -59,7 +59,7 @@ This creates `ccbda-lambda-role` with permissions for Textract, S3, DynamoDB, SQ
 ### 6. Deploy the processing pipeline
 
 ```bash
-./scripts/deploy_pipeline.sh pipeline_env.sh
+./scripts/deploy_pipeline.sh scripts/pipeline_env.sh
 ```
 
 This creates:
@@ -71,10 +71,18 @@ This creates:
 
 Note the **Job Queue URL** printed at the end. You need it for `JOB_PROCESSING_QUEUE_URL` in `.env`.
 
-### 7. Create Cognito User Pool and App Client
+### 7. Set up CloudWatch Dashboards and Alarms
 
 ```bash
-./scripts/setup_cognito.sh pipeline_env.sh
+./scripts/deploy_cloudwatch.sh scripts/pipeline_env.sh
+```
+
+This creates a dashboard named `CCBDA-Project-Dashboard` and configures alarms for DLQ visibility and Lambda errors.
+
+### 8. Create Cognito User Pool and App Client
+
+```bash
+./scripts/setup_cognito.sh scripts/pipeline_env.sh
 ```
 
 This creates or reuses:
@@ -94,7 +102,7 @@ AWS_REGION=...
 
 Keep these values for the backend `.env` and frontend `.env.local`.
 
-### 8. Set up backend `.env`
+### 9. Set up backend `.env`
 
 ```bash
 cp .env.example .env
@@ -108,15 +116,15 @@ COGNITO_USER_POOL_ID=<value from setup_cognito.sh>
 COGNITO_APP_CLIENT_ID=<value from setup_cognito.sh>
 ```
 
-Also make sure `S3_BUCKET_NAME`, `DYNAMODB_TABLE_NAME`, and `AWS_REGION` match `pipeline_env.sh`.
+Also make sure `S3_BUCKET_NAME`, `DYNAMODB_TABLE_NAME`, and `AWS_REGION` match `scripts/pipeline_env.sh`.
 
-### 9. Create the DynamoDB table
+### 10. Create the DynamoDB table
 
 ```bash
 uv run python scripts/create_table.py
 ```
 
-### 10. Set up frontend `.env.local`
+### 11. Set up frontend `.env.local`
 
 From the repository root:
 
@@ -136,7 +144,7 @@ NEXT_PUBLIC_COGNITO_APP_CLIENT_ID=<value from setup_cognito.sh>
 
 The frontend primarily needs `NEXT_PUBLIC_AWS_REGION` and `NEXT_PUBLIC_COGNITO_APP_CLIENT_ID` to call Cognito.
 
-### 11. Run the backend
+### 12. Run the backend
 
 ```bash
 cd backend
@@ -145,7 +153,7 @@ uv run uvicorn app.main:app --reload
 
 API at http://localhost:8000. Interactive docs at http://localhost:8000/docs.
 
-### 12. Run the frontend
+### 13. Run the frontend
 
 In another terminal:
 
@@ -212,9 +220,12 @@ backend/
 ├── scripts/
 │   ├── create_table.py            # Create DynamoDB AppTable
 │   ├── deploy_pipeline.sh         # Deploy Lambdas + SQS + S3 notifications
+│   ├── deploy_cloudwatch.sh       # Deploy CloudWatch Alarms + Dashboard
 │   ├── setup_cognito.sh           # Create Cognito User Pool + App Client
+│   ├── toggle_pipeline.sh         # Enable/disable SQS event source mappings
+│   ├── teardown.sh                # Disable polling + terminate EB (stops costs)
+│   ├── pipeline_env.example.sh    # Config for deploy and Cognito setup scripts
 │   └── create_lambda_role.sh      # IAM role for Lambdas
-├── pipeline_env.example.sh        # Config for deploy and Cognito setup scripts
 ├── tests/
 ├── Dockerfile
 └── pyproject.toml
@@ -284,3 +295,24 @@ When a PDF is uploaded to S3, this pipeline runs automatically:
 3. **dlq_handler** (Lambda) — processes failed messages, marks DynamoDB items as `status: failed`
 
 The pipeline is deployed via `scripts/deploy_pipeline.sh`.
+
+## Stopping Costs When Idle
+
+EB is the only always-on cost (~$15-30/mo for the EC2 instance). Lambda's SQS poller fleet also generates ~6 idle requests per queue per minute even with nothing to process — within the SQS free tier, but unnecessary when the app is paused.
+
+Tear down both with one command:
+
+```bash
+./scripts/teardown.sh scripts/pipeline_env.sh
+```
+
+This disables the SQS → Lambda event source mappings and terminates the `ccbda-backend-prod` EB environment. Lambdas, DynamoDB, S3, CloudFront, and the SQS queues themselves remain — essentially free at idle.
+
+To pause polling without terminating EB (e.g., during local backend development against deployed infra):
+
+```bash
+./scripts/toggle_pipeline.sh disable scripts/pipeline_env.sh
+./scripts/toggle_pipeline.sh enable  scripts/pipeline_env.sh
+```
+
+Re-deploying with `./scripts/deploy_pipeline.sh` (or pushing a `v*` tag for CI deploy) automatically re-enables the mappings — no manual `enable` step needed after a teardown + redeploy cycle.

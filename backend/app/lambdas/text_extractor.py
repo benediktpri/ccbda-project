@@ -5,8 +5,23 @@ from datetime import UTC, datetime
 
 import boto3
 
+
+class _JsonFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps(
+            {
+                "timestamp": self.formatTime(record),
+                "level": record.levelname,
+                "message": record.getMessage(),
+                "logger": record.name,
+            }
+        )
+
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+if logger.handlers:
+    logger.handlers[0].setFormatter(_JsonFormatter())
 
 textract = boto3.client("textract")
 s3 = boto3.client("s3")

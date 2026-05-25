@@ -81,7 +81,7 @@ export default function ProfilePage() {
         }
         try {
             const s = await api.getProfileStatus(uid);
-            if (s.structured_status === 'done' || s.raw_status === 'done') {
+            if (s.structured_status === 'ready' || s.raw_status === 'ready') {
                 if (pollTimer.current) clearInterval(pollTimer.current);
                 const updated = await api.getProfile(uid);
                 setProfile(updated);
@@ -128,7 +128,7 @@ export default function ProfilePage() {
     if (error && !profile) return <p className="text-red-400">Error: {error}</p>;
 
     const statusColor =
-        profile.status === 'done'
+        profile.status === 'ready'
             ? 'bg-green-900/50 text-green-400 border border-green-800'
             : 'bg-yellow-900/50 text-yellow-400 border border-yellow-800';
 
@@ -300,12 +300,12 @@ export default function ProfilePage() {
                 <div className="space-y-2">
                     {d.skills.map((s, i) => (
                         <div key={i} className="flex gap-2 items-center">
-                            <input placeholder="Skill name" value={s.name} onChange={e => setSkill(i, 'name', e.target.value)} className={`${inputCls} flex-1`} />
-                            <select value={s.level ?? ''} onChange={e => setSkill(i, 'level', e.target.value || null)} className={`${inputCls} w-32`}>
+                            <input placeholder="Skill name" value={s.name} onChange={e => setSkill(i, 'name', e.target.value)} className={`${inputCls} flex-1 min-w-0`} />
+                            <select value={s.level ?? ''} onChange={e => setSkill(i, 'level', e.target.value || null)} className={`${inputCls} !w-32 shrink-0`}>
                                 <option value="">Level</option>
                                 {['beginner', 'intermediate', 'advanced', 'expert'].map(l => <option key={l} value={l}>{l}</option>)}
                             </select>
-                            <input placeholder="Yrs" type="number" value={s.years ?? ''} onChange={e => setSkill(i, 'years', e.target.value ? Number(e.target.value) : null)} className={`${inputCls} w-20`} />
+                            <input placeholder="Yrs" type="number" value={s.years ?? ''} onChange={e => setSkill(i, 'years', e.target.value ? Number(e.target.value) : null)} className={`${inputCls} !w-20 shrink-0`} />
                             <button onClick={() => removeSkill(i)} className="text-slate-500 hover:text-red-400 px-1">✕</button>
                         </div>
                     ))}
