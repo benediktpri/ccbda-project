@@ -16,7 +16,7 @@ USER_POOL_NAME="${COGNITO_USER_POOL_NAME:-ccbda-user-pool}"
 CLIENT_NAME="${COGNITO_APP_CLIENT_NAME:-ccbda-app-client}"
 
 echo "Checking if User Pool '${USER_POOL_NAME}' already exists..."
-EXISTING_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query "UserPools[?Name=='${USER_POOL_NAME}'].Id" --output text)
+EXISTING_POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --region "${AWS_REGION}" --query "UserPools[?Name=='${USER_POOL_NAME}'].Id" --output text)
 
 if [ -n "${EXISTING_POOL_ID}" ] && [ "${EXISTING_POOL_ID}" != "None" ]; then
     echo "User Pool already exists: ${EXISTING_POOL_ID}"
@@ -35,7 +35,7 @@ else
 fi
 
 echo "Checking if App Client '${CLIENT_NAME}' already exists..."
-EXISTING_CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id "${USER_POOL_ID}" --query "UserPoolClients[?ClientName=='${CLIENT_NAME}'].ClientId" --output text)
+EXISTING_CLIENT_ID=$(aws cognito-idp list-user-pool-clients --user-pool-id "${USER_POOL_ID}" --region "${AWS_REGION}" --query "UserPoolClients[?ClientName=='${CLIENT_NAME}'].ClientId" --output text)
 
 if [ -n "${EXISTING_CLIENT_ID}" ] && [ "${EXISTING_CLIENT_ID}" != "None" ]; then
     echo "App Client already exists: ${EXISTING_CLIENT_ID}"
