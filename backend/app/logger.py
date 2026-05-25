@@ -24,6 +24,12 @@ class JsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
+        # Include any custom fields passed via logger.info(..., extra={...})
+        standard = set(logging.LogRecord("", 0, "", 0, "", None, None).__dict__)
+        standard.update({"message", "asctime"})
+        for key, value in record.__dict__.items():
+            if key not in standard:
+                log_entry[key] = value
         if record.exc_info and record.exc_info[0] is not None:
             log_entry["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_entry)
