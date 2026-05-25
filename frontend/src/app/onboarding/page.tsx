@@ -31,7 +31,7 @@ export default function OnboardingPage() {
         api
             .getProfileStatus(userId)
             .then(status => {
-                if (status.structured_status === 'done') {
+                if (status.structured_status === 'ready') {
                     router.replace('/profile');
                 }
             })

@@ -81,7 +81,7 @@ export default function ProfilePage() {
         }
         try {
             const s = await api.getProfileStatus(uid);
-            if (s.structured_status === 'done' || s.raw_status === 'done') {
+            if (s.structured_status === 'ready' || s.raw_status === 'ready') {
                 if (pollTimer.current) clearInterval(pollTimer.current);
                 const updated = await api.getProfile(uid);
                 setProfile(updated);
@@ -128,7 +128,7 @@ export default function ProfilePage() {
     if (error && !profile) return <p className="text-red-400">Error: {error}</p>;
 
     const statusColor =
-        profile.status === 'done'
+        profile.status === 'ready'
             ? 'bg-green-900/50 text-green-400 border border-green-800'
             : 'bg-yellow-900/50 text-yellow-400 border border-yellow-800';
 

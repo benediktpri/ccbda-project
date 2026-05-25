@@ -358,12 +358,12 @@ function JobDetail({ userId, jobId, onBack }: { userId: string; jobId: string; o
     // Poll for job processing to complete when still pending/processing
     const jobStatus = job?.status;
     useEffect(() => {
-        if (!jobStatus || jobStatus === 'done' || jobStatus === 'error') return;
+        if (!jobStatus || jobStatus === 'ready' || jobStatus === 'error') return;
 
         const timer = setInterval(async () => {
             try {
                 const s = await api.getJobStatus(userId, jobId);
-                if (s.structured_status === 'done' || s.structured_status === 'error') {
+                if (s.structured_status === 'ready' || s.structured_status === 'error') {
                     const updated = await api.getJob(userId, jobId);
                     setJob(updated);
                     clearInterval(timer);
@@ -404,7 +404,7 @@ function JobDetail({ userId, jobId, onBack }: { userId: string; jobId: string; o
     if (!job) return null;
 
     const statusColor: Record<string, string> = {
-        done: 'bg-green-900/50 text-green-400 border-green-800',
+        ready: 'bg-green-900/50 text-green-400 border-green-800',
         processing: 'bg-yellow-900/50 text-yellow-400 border-yellow-800',
         pending: 'bg-slate-800 text-slate-400 border-slate-700',
         error: 'bg-red-900/50 text-red-400 border-red-800',
@@ -729,7 +729,7 @@ function JobCard({
     analyzing?: boolean;
 }) {
     const statusColor: Record<string, string> = {
-        done: 'bg-green-900/50 text-green-400 border-green-800/50',
+        ready: 'bg-green-900/50 text-green-400 border-green-800/50',
         processing: 'bg-yellow-900/50 text-yellow-400 border-yellow-800/50',
         pending: 'bg-slate-800 text-slate-500 border-slate-700',
         error: 'bg-red-900/50 text-red-400 border-red-800/50',
