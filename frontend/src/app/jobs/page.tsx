@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
@@ -89,18 +89,6 @@ function JobsList({ userId }: { userId: string }) {
     const [loadingScores, setLoadingScores] = useState(false);
     const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
-    // ── load jobs ──
-    const loadJobs = useCallback(async () => {
-        try {
-            const items = await api.listJobs(userId);
-            setJobs(items);
-        } catch (err) {
-            setError((err as Error).message);
-        } finally {
-            setLoading(false);
-        }
-    }, [userId]);
-
     useEffect(() => {
         api.listJobs(userId)
             .then(items => setJobs(items))
@@ -159,6 +147,7 @@ function JobsList({ userId }: { userId: string }) {
             router.push(`/jobs?id=${job_id}`);
         } catch (err) {
             alert(`Import failed: ${(err as Error).message}`);
+        } finally {
             setUploading(false);
         }
     }
@@ -374,14 +363,10 @@ function JobDetail({ userId, jobId, onBack }: { userId: string; jobId: string; o
         const timer = setInterval(async () => {
             try {
                 const s = await api.getJobStatus(userId, jobId);
-                if (s.structured_status === 'done') {
-                    clearInterval(timer);
+                if (s.structured_status === 'done' || s.structured_status === 'error') {
                     const updated = await api.getJob(userId, jobId);
                     setJob(updated);
-                } else if (s.structured_status === 'error') {
                     clearInterval(timer);
-                    const updated = await api.getJob(userId, jobId);
-                    setJob(updated);
                 }
             } catch {
                 // keep polling on transient errors
