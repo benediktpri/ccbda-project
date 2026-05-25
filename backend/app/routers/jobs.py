@@ -4,7 +4,7 @@ import uuid
 
 import boto3
 from botocore.config import Config
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
 from app.config import settings
 from app.models.schemas import (
@@ -16,6 +16,7 @@ from app.models.schemas import (
     JobUploadResponse,
 )
 from app.services import dynamodb
+from app.services.auth import verify_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -48,7 +49,7 @@ def _send_to_structurer(user_id: str, job_id: str, raw_text: str):
 
 
 @router.post("/jobs", status_code=status.HTTP_201_CREATED)
-def create_job(user_id: str, body: CreateJobRequest):
+def create_job(body: CreateJobRequest, user_id: str = Depends(verify_user_id)):
     if body.source_type == "text" and not body.raw_text:
         raise HTTPException(status_code=400, detail="raw_text is required for text source type")
     if body.source_type == "pdf":
@@ -68,7 +69,7 @@ def create_job(user_id: str, body: CreateJobRequest):
 
 
 @router.post("/jobs/upload", response_model=JobUploadResponse)
-def upload_job_pdf(user_id: str):
+def upload_job_pdf(user_id: str = Depends(verify_user_id)):
     user = dynamodb.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -107,7 +108,7 @@ def upload_job_pdf(user_id: str):
 
 
 @router.post("/jobs/upload-file", response_model=JobFileUploadResponse)
-async def upload_job_file(user_id: str, file: UploadFile):
+async def upload_job_file(file: UploadFile, user_id: str = Depends(verify_user_id)):
     user = dynamodb.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -148,7 +149,7 @@ async def upload_job_file(user_id: str, file: UploadFile):
 
 
 @router.get("/jobs", response_model=list[JobListItem])
-def list_jobs(user_id: str):
+def list_jobs(user_id: str = Depends(verify_user_id)):
     items = dynamodb.list_jobs(user_id)
     return [
         JobListItem(
@@ -166,7 +167,7 @@ def list_jobs(user_id: str):
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)
-def get_job(user_id: str, job_id: str):
+def get_job(job_id: str, user_id: str = Depends(verify_user_id)):
     structured = dynamodb.get_job_structured(user_id, job_id)
     raw = dynamodb.get_job_raw(user_id, job_id)
     if not raw and not structured:
@@ -188,7 +189,7 @@ def get_job(user_id: str, job_id: str):
 
 
 @router.get("/jobs/{job_id}/status", response_model=JobStatusResponse)
-def get_job_status(user_id: str, job_id: str):
+def get_job_status(job_id: str, user_id: str = Depends(verify_user_id)):
     raw = dynamodb.get_job_raw(user_id, job_id)
     structured = dynamodb.get_job_structured(user_id, job_id)
     if not raw and not structured:
@@ -200,7 +201,7 @@ def get_job_status(user_id: str, job_id: str):
 
 
 @router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_job(user_id: str, job_id: str):
+def delete_job(job_id: str, user_id: str = Depends(verify_user_id)):
     raw = dynamodb.get_job_raw(user_id, job_id)
     structured = dynamodb.get_job_structured(user_id, job_id)
     if not raw and not structured:

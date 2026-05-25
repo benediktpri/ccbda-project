@@ -11,6 +11,8 @@ A cloud-native application that helps job seekers identify skills gaps by analyz
 ```
 Frontend (Next.js, static on S3/CloudFront)
     │
+    ├── AWS Cognito (signup, email verification, login)
+    │
     ▼
 Backend (FastAPI on Elastic Beanstalk)
     │
@@ -22,7 +24,7 @@ Async Pipeline:
   S3 upload → Lambda (Textract) → SQS → Lambda (Bedrock structuring) → DynamoDB
 ```
 
-**AWS services used:** S3, CloudFront, Elastic Beanstalk, Lambda (×4), SQS (×2 + DLQs), DynamoDB, Textract, Bedrock, CloudWatch.
+**AWS services used:** Cognito, S3, CloudFront, Elastic Beanstalk, Lambda (×4), SQS (×2 + DLQs), DynamoDB, Textract, Bedrock, CloudWatch.
 
 
 ## Prerequisites
@@ -42,7 +44,7 @@ Follow the step-by-step guide in [backend/README.md](backend/README.md#setup-fir
 - Installing dependencies
 - Configuring AWS credentials
 - Enabling Bedrock model access
-- Creating the IAM role, S3 bucket, SQS queues, Lambdas, and DynamoDB table
+- Creating the IAM role, S3 bucket, SQS queues, Lambdas, DynamoDB table, and Cognito User Pool/App Client
 - Filling in `.env`
 
 ### 2. Frontend setup
@@ -51,6 +53,7 @@ Follow the step-by-step guide in [backend/README.md](backend/README.md#setup-fir
 cd frontend
 npm install
 cp .env.example .env.local
+# Fill Cognito values printed by backend/scripts/setup_cognito.sh
 npm run dev
 ```
 
@@ -76,7 +79,7 @@ ccbda-project/
 │   │   ├── config.py        # Settings from .env
 │   │   ├── routers/         # API endpoints (users, upload, profiles, jobs, results)
 │   │   ├── models/          # Pydantic schemas
-│   │   ├── services/        # DynamoDB + Bedrock clients
+│   │   ├── services/        # DynamoDB, Bedrock, and Cognito auth helpers
 │   │   └── lambdas/         # Lambda function handlers (deployed separately)
 │   ├── scripts/             # Table creation, pipeline deployment
 │   ├── tests/               # pytest + moto
@@ -87,7 +90,7 @@ ccbda-project/
 ├── .github/workflows/
 │   ├── ci.yml               # Lint + test on every push/PR
 │   └── deploy.yml           # Deploy on tag push (v*)
-└── docs/                    # Architecture docs, schema design
+└── docs/                    # Architecture docs, schema design, Cognito docs
 ```
 
 ## CI/CD
@@ -123,3 +126,9 @@ npm run build                            # Production build
 npm run lint                             # ESLint
 npx tsc --noEmit                         # Type check
 ```
+
+## Authentication
+
+Authentication is handled by AWS Cognito. The frontend signs users up, confirms their email, and signs them in directly through the Cognito API. After login, Cognito returns JWT tokens. The frontend sends the `IdToken` to the FastAPI backend as a bearer token, and the backend verifies it before allowing access to user-scoped resources.
+
+The Cognito user `sub` is used as the application `user_id`. See [docs/Cognito_Implementation.md](docs/Cognito_Implementation.md) for the full implementation details.

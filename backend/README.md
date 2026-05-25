@@ -34,19 +34,31 @@ export AWS_PROFILE=lab_cli_user
 
 In the AWS Console, go to **Bedrock → Model access** (region: `eu-west-1`) and request access to Anthropic Claude models. This may take a few minutes to be approved.
 
-### 4. Create the IAM role for Lambdas
+### 4. Prepare the pipeline environment file
 
 ```bash
-./scripts/create_lambda_role.sh scripts/pipeline_env.example.sh
+cp scripts/pipeline_env.example.sh scripts/pipeline_env.sh
+```
+
+Edit `scripts/pipeline_env.sh` if you want to change resource names. Defaults are fine for a first run, but S3 bucket names must be globally unique. If bucket creation fails, change `S3_BUCKET_NAME` to something unique, for example:
+
+```bash
+S3_BUCKET_NAME=ccbda-app-bucket-yourname
+```
+
+The same file is used by the Lambda/SQS/S3 setup and the Cognito setup script.
+
+### 5. Create the IAM role for Lambdas
+
+```bash
+./scripts/create_lambda_role.sh scripts/pipeline_env.sh
 ```
 
 This creates `ccbda-lambda-role` with permissions for Textract, S3, DynamoDB, SQS, Bedrock, and CloudWatch.
 
-### 5. Deploy the processing pipeline
+### 6. Deploy the processing pipeline
 
 ```bash
-cp scripts/pipeline_env.example.sh scripts/pipeline_env.sh
-# Edit scripts/pipeline_env.sh if you want to change names (defaults are fine)
 ./scripts/deploy_pipeline.sh scripts/pipeline_env.sh
 ```
 
@@ -57,9 +69,9 @@ This creates:
 - S3 → Lambda event notifications
 - SQS → Lambda event source mappings
 
-Note the **Job Queue URL** printed at the end — you'll need it for `.env`.
+Note the **Job Queue URL** printed at the end. You need it for `JOB_PROCESSING_QUEUE_URL` in `.env`.
 
-### 6. Set up CloudWatch Dashboards and Alarms
+### 7. Set up CloudWatch Dashboards and Alarms
 
 ```bash
 ./scripts/deploy_cloudwatch.sh scripts/pipeline_env.sh
@@ -67,27 +79,93 @@ Note the **Job Queue URL** printed at the end — you'll need it for `.env`.
 
 This creates a dashboard named `CCBDA-Project-Dashboard` and configures alarms for DLQ visibility and Lambda errors.
 
-### 7. Set up `.env`
+### 8. Create Cognito User Pool and App Client
+
+```bash
+./scripts/setup_cognito.sh scripts/pipeline_env.sh
+```
+
+This creates or reuses:
+
+- Cognito User Pool (`COGNITO_USER_POOL_NAME`, default `ccbda-user-pool`)
+- Cognito App Client (`COGNITO_APP_CLIENT_NAME`, default `ccbda-app-client`)
+
+The User Pool uses email as the username and sends email verification codes. The App Client is created without a client secret because it is used by the browser frontend.
+
+The script prints:
+
+```bash
+COGNITO_USER_POOL_ID=...
+COGNITO_APP_CLIENT_ID=...
+AWS_REGION=...
+```
+
+Keep these values for the backend `.env` and frontend `.env.local`.
+
+### 9. Set up backend `.env`
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and fill in `JOB_PROCESSING_QUEUE_URL` with the queue URL printed in step 5.
+Edit `.env` and fill in:
 
-### 8. Create the DynamoDB table
+```bash
+JOB_PROCESSING_QUEUE_URL=<Job Queue URL from deploy_pipeline.sh>
+COGNITO_USER_POOL_ID=<value from setup_cognito.sh>
+COGNITO_APP_CLIENT_ID=<value from setup_cognito.sh>
+```
+
+Also make sure `S3_BUCKET_NAME`, `DYNAMODB_TABLE_NAME`, and `AWS_REGION` match `scripts/pipeline_env.sh`.
+
+### 10. Create the DynamoDB table
 
 ```bash
 uv run python scripts/create_table.py
 ```
 
-### 9. Run the backend
+### 11. Set up frontend `.env.local`
+
+From the repository root:
 
 ```bash
+cd frontend
+cp .env.example .env.local
+```
+
+Edit `frontend/.env.local`:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_AWS_REGION=eu-west-1
+NEXT_PUBLIC_COGNITO_USER_POOL_ID=<value from setup_cognito.sh>
+NEXT_PUBLIC_COGNITO_APP_CLIENT_ID=<value from setup_cognito.sh>
+```
+
+The frontend primarily needs `NEXT_PUBLIC_AWS_REGION` and `NEXT_PUBLIC_COGNITO_APP_CLIENT_ID` to call Cognito.
+
+### 12. Run the backend
+
+```bash
+cd backend
 uv run uvicorn app.main:app --reload
 ```
 
 API at http://localhost:8000. Interactive docs at http://localhost:8000/docs.
+
+### 13. Run the frontend
+
+In another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend at http://localhost:3000.
+
+Go to http://localhost:3000/login, sign up, confirm the email code, and sign in. After login, the frontend calls `GET /users/me`; the backend verifies the Cognito token and creates the DynamoDB user record if it does not already exist.
 
 ## Daily Development
 
@@ -123,7 +201,7 @@ backend/
 │   ├── main.py            # FastAPI app + CORS + router registration
 │   ├── config.py          # Pydantic Settings (loaded from .env)
 │   ├── routers/
-│   │   ├── users.py       # POST /users, GET /users/{id}
+│   │   ├── users.py       # GET /users/me, GET /users/{id}
 │   │   ├── upload.py      # POST /users/{id}/profile/upload[-file]
 │   │   ├── profiles.py    # GET/PATCH /users/{id}/profile
 │   │   ├── jobs.py        # CRUD /users/{id}/jobs + upload
@@ -132,7 +210,8 @@ backend/
 │   │   └── schemas.py     # Pydantic models for request/response + Bedrock tool schemas
 │   ├── services/
 │   │   ├── dynamodb.py    # All DynamoDB operations
-│   │   └── bedrock.py     # Skills-gap analysis via Bedrock
+│   │   ├── bedrock.py     # Skills-gap analysis via Bedrock
+│   │   └── auth.py        # Cognito JWT verification and user-id checks
 │   └── lambdas/
 │       ├── text_extractor.py      # S3 trigger → Textract → SQS
 │       ├── profile_structurer.py  # SQS → Bedrock → DynamoDB (profile)
@@ -142,9 +221,10 @@ backend/
 │   ├── create_table.py            # Create DynamoDB AppTable
 │   ├── deploy_pipeline.sh         # Deploy Lambdas + SQS + S3 notifications
 │   ├── deploy_cloudwatch.sh       # Deploy CloudWatch Alarms + Dashboard
+│   ├── setup_cognito.sh           # Create Cognito User Pool + App Client
 │   ├── toggle_pipeline.sh         # Enable/disable SQS event source mappings
 │   ├── teardown.sh                # Disable polling + terminate EB (stops costs)
-│   ├── pipeline_env.example.sh    # Config for deploy script
+│   ├── pipeline_env.example.sh    # Config for deploy and Cognito setup scripts
 │   └── create_lambda_role.sh      # IAM role for Lambdas
 ├── tests/
 ├── Dockerfile
@@ -157,7 +237,7 @@ All user-scoped endpoints are prefixed with `/users/{user_id}`.
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| POST | `/users` | Create a new user |
+| GET | `/users/me` | Get or create current user from Cognito token |
 | GET | `/users/{user_id}` | Get user |
 | POST | `.../profile/upload` | Get presigned S3 URL for CV upload |
 | POST | `.../profile/upload-file` | Direct file upload (PDF) |
@@ -188,7 +268,23 @@ See `.env.example` for a ready-to-copy template.
 | `S3_BUCKET_NAME` | `ccbda-app-bucket` | S3 bucket for file uploads |
 | `JOB_PROCESSING_QUEUE_URL` | — | SQS queue URL for job structuring (from `deploy_pipeline.sh` output) |
 | `BEDROCK_MODEL_ID` | `eu.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model for LLM calls |
+| `COGNITO_USER_POOL_ID` | — | Cognito User Pool ID from `setup_cognito.sh` |
+| `COGNITO_APP_CLIENT_ID` | — | Cognito App Client ID from `setup_cognito.sh` |
 | `ENVIRONMENT` | `dev` | Environment name |
+
+## Cognito Authentication
+
+The frontend talks directly to Cognito for signup, email confirmation, and login. After login, Cognito returns JWT tokens. The frontend sends the `IdToken` to the backend:
+
+```http
+Authorization: Bearer <IdToken>
+```
+
+The backend verifies the JWT in `app/services/auth.py` using Cognito's public JWKS keys. After verification, the Cognito `sub` is used as the trusted application `user_id`.
+
+All `/users/{user_id}/...` endpoints compare the route `user_id` with the verified token `sub`. If they do not match, the request returns `403 Forbidden`.
+
+For the complete design, see [../docs/Cognito_Implementation.md](../docs/Cognito_Implementation.md).
 
 ## Async Processing Pipeline
 

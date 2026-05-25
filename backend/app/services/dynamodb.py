@@ -26,9 +26,10 @@ def _new_id() -> str:
 # --- User ---
 
 
-def create_user() -> dict:
+def create_user(user_id: str | None = None) -> dict:
     table = _get_table()
-    user_id = _new_id()
+    if user_id is None:
+        user_id = _new_id()
     now = _now()
     item = {
         "PK": f"USER#{user_id}",
@@ -40,7 +41,10 @@ def create_user() -> dict:
         table.put_item(Item=item, ConditionExpression="attribute_not_exists(PK)")
     except ClientError as e:
         if e.response["Error"]["Code"] == "ConditionalCheckFailedException":
-            return create_user()
+            if user_id is None:
+                return create_user()
+            # User already exists, return existing metadata
+            return get_user(user_id) or item
         raise
     return item
 

@@ -11,7 +11,26 @@ import type {
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, options);
+  let token: string | null = null;
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('ccbda_auth');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        token = parsed.idToken || null;
+      } catch {}
+    }
+  }
+
+  const headers = new Headers(options.headers);
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const res = await fetch(`${BASE}${path}`, {
+    ...options,
+    headers,
+  });
   if (res.status === 204) return null as T;
   const data = await res.json().catch(() => ({ detail: res.statusText }));
   if (!res.ok) throw new Error((data as { detail?: string }).detail ?? 'Request failed');
@@ -20,8 +39,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Users
-  createUser: (): Promise<UserResponse> =>
-    request<UserResponse>('/users', { method: 'POST' }),
+  getCurrentUser: (): Promise<UserResponse> =>
+    request<UserResponse>('/users/me'),
 
   getUser: (userId: string): Promise<UserResponse> =>
     request<UserResponse>(`/users/${userId}`),

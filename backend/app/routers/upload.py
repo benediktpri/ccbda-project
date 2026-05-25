@@ -3,11 +3,12 @@ import uuid
 
 import boto3
 from botocore.config import Config
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from app.config import settings
 from app.models.schemas import FileUploadResponse, UploadResponse
 from app.services import dynamodb
+from app.services.auth import verify_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -24,7 +25,7 @@ def _get_s3_client():
 
 
 @router.post("/profile/upload", response_model=UploadResponse)
-def upload_cv(user_id: str):
+def upload_cv(user_id: str = Depends(verify_user_id)):
     user = dynamodb.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -61,7 +62,7 @@ def upload_cv(user_id: str):
 
 
 @router.post("/profile/upload-file", response_model=FileUploadResponse)
-async def upload_cv_file(user_id: str, file: UploadFile):
+async def upload_cv_file(file: UploadFile, user_id: str = Depends(verify_user_id)):
     user = dynamodb.get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
