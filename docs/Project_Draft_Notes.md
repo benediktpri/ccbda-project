@@ -22,7 +22,7 @@
 **Optional / stretch features**
 - Job description scraping — user pastes a URL and the system extracts the job description automatically
 - Richer dashboard — filters, status tracking, side-by-side comparison of multiple roles
-- User authentication — MVP has no auth or a simple approach; AWS Cognito as a stretch goal
+- User authentication — AWS Cognito is used for signup, email confirmation, login, and JWT-based backend protection
 - CV improvement suggestions — LLM recommends how to strengthen the CV for a target role
 - Interview preparation — LLM generates likely interview questions for the role with suggested talking points
 
@@ -55,7 +55,7 @@
 | **DynamoDB** | Store user profiles, parsed CV data, job records, and all generated outputs (cover letters, interview prep) — document-oriented, serverless, pairs well with Lambda, used in labs |
 | **CloudFront** | Serve the static React frontend build from S3 with low latency |
 | **CloudWatch** | Centralised logging and monitoring across all services |
-| **Cognito** _(stretch)_ | User authentication if time permits — MVP has no auth or a simple approach |
+| **Cognito** | User authentication with managed user pools, email verification, and JWT-protected backend routes |
 
 **Other tools and frameworks**
 - Python 3.13, managed with `uv`

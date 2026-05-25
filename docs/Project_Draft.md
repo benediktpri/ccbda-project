@@ -83,7 +83,7 @@ The application is built with a combination of AWS managed services and open-sou
 
 **Amazon CloudWatch** provides centralised logging and monitoring across all services, supporting both debugging during development and operational monitoring in production.
 
-**Amazon Cognito** is planned as a stretch goal to add user authentication and authorisation via managed user pools and JWT tokens. The MVP will either omit authentication entirely or use a simple approach.
+**Amazon Cognito** is used for user authentication and authorisation via managed user pools and JWT tokens. The frontend handles signup, email confirmation, and login through Cognito, while the FastAPI backend verifies JWT tokens and uses the Cognito `sub` as the trusted application `user_id`.
 
 Beyond AWS, the project uses Python with FastAPI as the backend REST framework and React for the frontend. Docker is used to containerise the application for reproducible Elastic Beanstalk deployments. Version control and CI/CD are handled through GitHub and GitHub Actions.
 

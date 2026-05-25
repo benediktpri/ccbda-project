@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Creates the IAM role for the CV pipeline Lambdas with all required permissions.
-# Usage: ./scripts/create_lambda_role.sh [scripts/pipeline_env.sh]
+# Usage: ./scripts/create_lambda_role.sh [pipeline_env.sh]
 
 if [ "${1:-}" != "" ]; then
     source "$1"

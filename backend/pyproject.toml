@@ -11,6 +11,8 @@ dependencies = [
     "boto3",
     "botocore[crt]",
     "python-multipart>=0.0.27",
+    "python-jose[cryptography]",
+    "requests",
 ]
 
 [dependency-groups]

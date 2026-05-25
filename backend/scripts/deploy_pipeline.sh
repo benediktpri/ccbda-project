@@ -4,7 +4,7 @@ set -euo pipefail
 export AWS_PAGER=""
 
 # Deploy the CV processing pipeline (S3 → Lambda 1 → SQS → Lambda 2)
-# Usage: ./scripts/deploy_pipeline.sh scripts/pipeline_env.sh
+# Usage: ./scripts/deploy_pipeline.sh pipeline_env.sh
 
 source "$1"
 

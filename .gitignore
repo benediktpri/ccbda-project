@@ -233,3 +233,6 @@ CLAUDE.md
 
 # Local pipeline config (create from pipeline_env.example.sh)
 backend/scripts/pipeline_env.sh
+
+# Local helper binaries
+backend/jq.exe

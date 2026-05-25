@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.schemas import AnalysisResultResponse
 from app.services import dynamodb
+from app.services.auth import verify_user_id
 from app.services.bedrock import analyze_skills_gap
 
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ router = APIRouter()
 
 
 @router.post("/jobs/{job_id}/analyze", response_model=AnalysisResultResponse)
-def analyze_job(user_id: str, job_id: str):
+def analyze_job(job_id: str, user_id: str = Depends(verify_user_id)):
     profile_structured = dynamodb.get_profile_structured(user_id)
     if not profile_structured or profile_structured.get("status") != "ready":
         raise HTTPException(status_code=404, detail="Profile not found or not yet processed")
@@ -45,7 +46,7 @@ def analyze_job(user_id: str, job_id: str):
 
 
 @router.get("/results", response_model=list[AnalysisResultResponse])
-def list_results(user_id: str):
+def list_results(user_id: str = Depends(verify_user_id)):
     items = dynamodb.list_results(user_id)
     return [
         AnalysisResultResponse(
@@ -61,7 +62,7 @@ def list_results(user_id: str):
 
 
 @router.get("/results/{job_id}", response_model=AnalysisResultResponse)
-def get_result(user_id: str, job_id: str):
+def get_result(job_id: str, user_id: str = Depends(verify_user_id)):
     item = dynamodb.get_result(user_id, job_id)
     if not item:
         raise HTTPException(status_code=404, detail="Analysis result not found")
