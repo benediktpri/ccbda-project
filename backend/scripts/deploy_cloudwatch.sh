@@ -50,8 +50,9 @@ for func in "$LAMBDA_EXTRACTOR_NAME" "$LAMBDA_STRUCTURER_NAME" "$LAMBDA_JOB_STRU
     --region "${AWS_REGION}" >/dev/null
 done
 
-# Enable CloudWatch log streaming for Elastic Beanstalk (FastAPI backend)
-echo "Enabling CloudWatch log streaming for Elastic Beanstalk..."
+# Enable CloudWatch log streaming and enhanced health reporting for Elastic Beanstalk.
+# Enhanced health is required for the AWS/ElasticBeanstalk ApplicationRequests5xx metric below.
+echo "Enabling CloudWatch log streaming and enhanced health for Elastic Beanstalk..."
 aws elasticbeanstalk update-environment \
   --application-name "ccbda-backend" \
   --environment-name "${EB_ENV_NAME}" \
@@ -59,6 +60,7 @@ aws elasticbeanstalk update-environment \
     Namespace=aws:elasticbeanstalk:cloudwatch:logs,OptionName=StreamLogs,Value=true \
     Namespace=aws:elasticbeanstalk:cloudwatch:logs,OptionName=RetentionInDays,Value=7 \
     Namespace=aws:elasticbeanstalk:cloudwatch:logs,OptionName=DeleteOnTerminate,Value=false \
+    Namespace=aws:elasticbeanstalk:healthreporting:system,OptionName=SystemType,Value=enhanced \
   --region "${AWS_REGION}" >/dev/null
 
 # FastAPI (Elastic Beanstalk) HTTP 5xx Error Alarm
@@ -66,7 +68,7 @@ aws cloudwatch put-metric-alarm \
   --alarm-name "High-5xx-Rate-FastAPI" \
   --alarm-description "Alarm when FastAPI returns 5xx errors" \
   --metric-name ApplicationRequests5xx \
-  --namespace AWSEBV2/LoadBalancer \
+  --namespace AWS/ElasticBeanstalk \
   --statistic Sum \
   --period 300 \
   --threshold 5 \
