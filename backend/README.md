@@ -132,7 +132,9 @@ backend/
 │       └── dlq_handler.py         # DLQ → marks items as failed
 ├── scripts/
 │   ├── create_table.py            # Create DynamoDB AppTable
-│   ├── deploy_pipeline.sh         # Deploy Lambdas + SQS + S3 notifications
+│   ├── deploy_pipeline.sh         # Deploy Lambdas + SQS + S3 notifications (auto-enables polling)
+│   ├── toggle_pipeline.sh         # Enable/disable SQS event source mappings
+│   ├── teardown.sh                # Disable polling + terminate EB (stops costs)
 │   ├── pipeline_env.example.sh    # Config for deploy script
 │   └── create_lambda_role.sh      # IAM role for Lambdas
 ├── tests/
@@ -188,3 +190,24 @@ When a PDF is uploaded to S3, this pipeline runs automatically:
 3. **dlq_handler** (Lambda) — processes failed messages, marks DynamoDB items as `status: failed`
 
 The pipeline is deployed via `scripts/deploy_pipeline.sh`.
+
+## Stopping Costs When Idle
+
+EB is the only always-on cost (~$15-30/mo for the EC2 instance). Lambda's SQS poller fleet also generates ~6 idle requests per queue per minute even with nothing to process — within the SQS free tier, but unnecessary when the app is paused.
+
+Tear down both with one command:
+
+```bash
+./scripts/teardown.sh scripts/pipeline_env.sh
+```
+
+This disables the SQS → Lambda event source mappings and terminates the `ccbda-backend-prod` EB environment. Lambdas, DynamoDB, S3, CloudFront, and the SQS queues themselves remain — essentially free at idle.
+
+To pause polling without terminating EB (e.g., during local backend development against deployed infra):
+
+```bash
+./scripts/toggle_pipeline.sh disable scripts/pipeline_env.sh
+./scripts/toggle_pipeline.sh enable  scripts/pipeline_env.sh
+```
+
+Re-deploying with `./scripts/deploy_pipeline.sh` (or pushing a `v*` tag for CI deploy) automatically re-enables the mappings — no manual `enable` step needed after a teardown + redeploy cycle.
