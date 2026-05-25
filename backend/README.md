@@ -59,7 +59,15 @@ This creates:
 
 Note the **Job Queue URL** printed at the end — you'll need it for `.env`.
 
-### 6. Set up `.env`
+### 6. Set up CloudWatch Dashboards and Alarms
+
+```bash
+./scripts/deploy_cloudwatch.sh scripts/pipeline_env.sh
+```
+
+This creates a dashboard named `CCBDA-Project-Dashboard` and configures alarms for DLQ visibility and Lambda errors.
+
+### 7. Set up `.env`
 
 ```bash
 cp .env.example .env
@@ -67,13 +75,13 @@ cp .env.example .env
 
 Edit `.env` and fill in `JOB_PROCESSING_QUEUE_URL` with the queue URL printed in step 5.
 
-### 7. Create the DynamoDB table
+### 8. Create the DynamoDB table
 
 ```bash
 uv run python scripts/create_table.py
 ```
 
-### 8. Run the backend
+### 9. Run the backend
 
 ```bash
 uv run uvicorn app.main:app --reload
@@ -132,7 +140,8 @@ backend/
 │       └── dlq_handler.py         # DLQ → marks items as failed
 ├── scripts/
 │   ├── create_table.py            # Create DynamoDB AppTable
-│   ├── deploy_pipeline.sh         # Deploy Lambdas + SQS + S3 notifications (auto-enables polling)
+│   ├── deploy_pipeline.sh         # Deploy Lambdas + SQS + S3 notifications
+│   ├── deploy_cloudwatch.sh       # Deploy CloudWatch Alarms + Dashboard
 │   ├── toggle_pipeline.sh         # Enable/disable SQS event source mappings
 │   ├── teardown.sh                # Disable polling + terminate EB (stops costs)
 │   ├── pipeline_env.example.sh    # Config for deploy script
