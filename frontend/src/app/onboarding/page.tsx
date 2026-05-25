@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
-import type { Language, Compensation, Skill } from '@/lib/types';
+import type { Language, Compensation } from '@/lib/types';
 
 const POLL_INTERVAL = 3000;
 const MAX_POLLS = 40;
@@ -221,7 +221,6 @@ function Step2Questions({ userId, onNext }: { userId: string; onNext: () => void
     const [compMax, setCompMax] = useState('');
     const [currency, setCurrency] = useState('EUR');
     const [languages, setLanguages] = useState<Language[]>([{ language: '', level: null }]);
-    const [skills, setSkills] = useState<Skill[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -240,7 +239,6 @@ function Step2Questions({ userId, onNext }: { userId: string; onNext: () => void
                     if (p.target_compensation.currency) setCurrency(p.target_compensation.currency);
                 }
                 if (p.languages?.length) setLanguages(p.languages);
-                if (p.skills?.length) setSkills(p.skills);
             })
             .catch(() => { });
     }, [userId]);
@@ -264,7 +262,6 @@ function Step2Questions({ userId, onNext }: { userId: string; onNext: () => void
                 willingness_to_relocate: relocate,
                 target_compensation: comp,
                 languages: languages.filter(l => l.language.trim()),
-                skills: skills.filter(s => s.name.trim()),
             });
             onNext();
         } catch (err) {
@@ -409,65 +406,6 @@ function Step2Questions({ userId, onNext }: { userId: string; onNext: () => void
                             className="text-sm text-indigo-400 hover:text-indigo-300"
                         >
                             + Add language
-                        </button>
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">
-                        Skills
-                    </label>
-                    <div className="space-y-2">
-                        {skills.map((s, i) => (
-                            <div key={i} className="flex gap-2 items-center">
-                                <input
-                                    value={s.name}
-                                    onChange={e => {
-                                        const next = [...skills];
-                                        next[i] = { ...next[i], name: e.target.value };
-                                        setSkills(next);
-                                    }}
-                                    placeholder="Skill name"
-                                    className={`${inputCls} flex-1 min-w-0`}
-                                />
-                                <select
-                                    value={s.level ?? ''}
-                                    onChange={e => {
-                                        const next = [...skills];
-                                        next[i] = { ...next[i], level: e.target.value || null };
-                                        setSkills(next);
-                                    }}
-                                    className={`${inputCls} !w-32 shrink-0`}
-                                >
-                                    <option value="">Level</option>
-                                    {['beginner', 'intermediate', 'advanced', 'expert'].map(l => (
-                                        <option key={l} value={l}>{l}</option>
-                                    ))}
-                                </select>
-                                <input
-                                    value={s.years ?? ''}
-                                    onChange={e => {
-                                        const next = [...skills];
-                                        next[i] = { ...next[i], years: e.target.value ? Number(e.target.value) : null };
-                                        setSkills(next);
-                                    }}
-                                    type="number"
-                                    placeholder="Yrs"
-                                    className={`${inputCls} !w-20 shrink-0`}
-                                />
-                                <button
-                                    onClick={() => setSkills(skills.filter((_, j) => j !== i))}
-                                    className="text-slate-500 hover:text-red-400 px-1"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        ))}
-                        <button
-                            onClick={() => setSkills([...skills, { name: '', level: null, years: null }])}
-                            className="text-sm text-indigo-400 hover:text-indigo-300"
-                        >
-                            + Add skill
                         </button>
                     </div>
                 </div>
