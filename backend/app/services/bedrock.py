@@ -51,8 +51,8 @@ def analyze_skills_gap(profile_structured: dict, job_raw_text: str, job_structur
     profile_experience = profile_structured.get("experience", [])
     profile_education = profile_structured.get("education", [])
 
-    job_title = job_structured.get("title", "Unknown")
-    job_company = job_structured.get("company", "Unknown")
+    job_title = job_structured.get("title", "Unknown title")
+    job_company = job_structured.get("company", "Unknown company")
     job_seniority = job_structured.get("seniority")
     job_skills = job_structured.get("required_skills", [])
 

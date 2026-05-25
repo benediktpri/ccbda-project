@@ -38,7 +38,7 @@ export default function UploadPage() {
             }
             try {
                 const s = await api.getProfileStatus(uid);
-                if (s.structured_status === 'done') {
+                if (s.structured_status === 'ready') {
                     stopPolling();
                     setStatus('done');
                     setMessage('Profile ready!');
