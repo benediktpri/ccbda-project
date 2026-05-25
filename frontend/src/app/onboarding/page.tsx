@@ -102,7 +102,7 @@ function Step1Upload({ userId, onNext }: { userId: string; onNext: () => void })
             }
             try {
                 const s = await api.getProfileStatus(uid);
-                if (s.structured_status === 'ready' || s.raw_status === 'ready') {
+                if (s.structured_status === 'ready') {
                     stopPolling();
                     setStatus('done');
                     setMessage('CV processed successfully!');
