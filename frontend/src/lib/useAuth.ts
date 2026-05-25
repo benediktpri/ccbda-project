@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from './api';
 
 const KEY = 'ccbda_auth';
@@ -19,18 +19,18 @@ interface UseAuthReturn {
 }
 
 export function useAuth(): UseAuthReturn {
-    const [auth, setAuth] = useState<AuthData | null>(() => {
-        if (typeof window === 'undefined') return null;
+    const [auth, setAuth] = useState<AuthData | null>(null);
+
+    useEffect(() => {
         const stored = localStorage.getItem(KEY);
         if (stored) {
             try {
-                return JSON.parse(stored) as AuthData;
+                setAuth(JSON.parse(stored) as AuthData);
             } catch {
                 localStorage.removeItem(KEY);
             }
         }
-        return null;
-    });
+    }, []);
 
     async function login(email: string, _password: string) {
         const user = await api.createUser();
