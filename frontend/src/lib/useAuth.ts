@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { api } from './api';
 
 const KEY = 'ccbda_auth';
@@ -18,30 +18,46 @@ interface UseAuthReturn {
     logout: () => void;
 }
 
-export function useAuth(): UseAuthReturn {
-    const [auth, setAuth] = useState<AuthData | null>(null);
+function subscribe(callback: () => void) {
+    window.addEventListener('storage', callback);
+    return () => window.removeEventListener('storage', callback);
+}
 
-    useEffect(() => {
-        const stored = localStorage.getItem(KEY);
-        if (stored) {
-            try {
-                setAuth(JSON.parse(stored) as AuthData);
-            } catch {
-                localStorage.removeItem(KEY);
-            }
+function getSnapshot(): string | null {
+    return localStorage.getItem(KEY);
+}
+
+function getServerSnapshot(): null {
+    return null;
+}
+
+function notifyStorage() {
+    window.dispatchEvent(new StorageEvent('storage', { key: KEY }));
+}
+
+export function useAuth(): UseAuthReturn {
+    const storedJson = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+    const auth = useMemo<AuthData | null>(() => {
+        if (!storedJson) return null;
+        try {
+            return JSON.parse(storedJson) as AuthData;
+        } catch {
+            localStorage.removeItem(KEY);
+            return null;
         }
-    }, []);
+    }, [storedJson]);
 
     async function login(email: string, _password: string) {
         const user = await api.createUser();
         const data: AuthData = { userId: user.user_id, email };
         localStorage.setItem(KEY, JSON.stringify(data));
-        setAuth(data);
+        notifyStorage();
     }
 
     function logout() {
         localStorage.removeItem(KEY);
-        setAuth(null);
+        notifyStorage();
     }
 
     return {
