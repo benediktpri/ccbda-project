@@ -277,7 +277,7 @@ cat > /tmp/dashboard.json <<EOF
       "width": 24,
       "height": 8,
       "properties": {
-        "query": "SOURCE '/aws/elasticbeanstalk/${EB_ENV_NAME}/var/log/web.stdout.log' | filter @message not like /^INFO:uvicorn/ and @message not like /GET \/health/\n| fields @timestamp, @log, level, logger, message, exception\n| sort @timestamp desc\n| limit 100",
+        "query": "SOURCE '/aws/elasticbeanstalk/${EB_ENV_NAME}/var/log/eb-docker/containers/eb-current-app/stdouterr.log' | filter @message not like \"INFO:\" and @message not like \"/health\"\n| fields @timestamp, @log, level, logger, message, exception\n| sort @timestamp desc\n| limit 100",
         "region": "${AWS_REGION}",
         "title": "FastAPI Logs (App Only)",
         "view": "table"
