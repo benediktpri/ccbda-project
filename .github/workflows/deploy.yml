@@ -14,8 +14,39 @@ env:
   FRONTEND_BUCKET: ccbda-frontend-hosting
 
 jobs:
+  setup-cognito:
+    runs-on: ubuntu-latest
+    outputs:
+      user_pool_id: ${{ steps.cognito.outputs.user_pool_id }}
+      app_client_id: ${{ steps.cognito.outputs.app_client_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run setup_cognito.sh
+        id: cognito
+        working-directory: backend
+        run: |
+          OUTPUT=$(./scripts/setup_cognito.sh scripts/pipeline_env.example.sh)
+          echo "$OUTPUT"
+          USER_POOL_ID=$(echo "$OUTPUT" | grep '^COGNITO_USER_POOL_ID=' | cut -d= -f2)
+          APP_CLIENT_ID=$(echo "$OUTPUT" | grep '^COGNITO_APP_CLIENT_ID=' | cut -d= -f2)
+          if [ -z "$USER_POOL_ID" ] || [ -z "$APP_CLIENT_ID" ]; then
+            echo "::error::Failed to parse Cognito IDs from setup script output"
+            exit 1
+          fi
+          echo "user_pool_id=$USER_POOL_ID" >> "$GITHUB_OUTPUT"
+          echo "app_client_id=$APP_CLIENT_ID" >> "$GITHUB_OUTPUT"
+
   deploy-backend:
     runs-on: ubuntu-latest
+    needs: setup-cognito
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +68,19 @@ jobs:
               --description "CCBDA FastAPI backend"
           fi
 
+      - name: Patch eb-options.json with Cognito IDs
+        env:
+          COGNITO_USER_POOL_ID: ${{ needs.setup-cognito.outputs.user_pool_id }}
+          COGNITO_APP_CLIENT_ID: ${{ needs.setup-cognito.outputs.app_client_id }}
+        run: |
+          jq --arg pool "$COGNITO_USER_POOL_ID" --arg client "$COGNITO_APP_CLIENT_ID" '
+            . + [
+              {Namespace: "aws:elasticbeanstalk:application:environment", OptionName: "COGNITO_USER_POOL_ID", Value: $pool},
+              {Namespace: "aws:elasticbeanstalk:application:environment", OptionName: "COGNITO_APP_CLIENT_ID", Value: $client}
+            ]
+          ' .github/eb-options.json > /tmp/eb-options.json
+          mv /tmp/eb-options.json .github/eb-options.json
+
       - name: Check/recreate EB environment
         run: |
           ENV_STATUS=$(aws elasticbeanstalk describe-environments \
@@ -53,31 +97,35 @@ jobs:
               --solution-stack-name "$EB_PLATFORM" \
               --option-settings file://.github/eb-options.json \
               --tier Name=WebServer,Type=Standard
-
-            echo "Waiting for environment to be ready..."
-            ATTEMPTS=0
-            MAX_ATTEMPTS=20
-            while true; do
-              STATUS=$(aws elasticbeanstalk describe-environments \
-                --application-name "$EB_APP_NAME" \
-                --environment-names "$EB_ENV_NAME" \
-                --query 'Environments[0].Status' --output text)
-              echo "Environment status: $STATUS"
-              [ "$STATUS" = "Ready" ] && break
-              if [ "$STATUS" = "Terminated" ]; then
-                echo "::error::Environment terminated unexpectedly. Check EB events for details."
-                exit 1
-              fi
-              ATTEMPTS=$((ATTEMPTS + 1))
-              if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
-                echo "::error::Timed out waiting for environment (10 min). Status: $STATUS"
-                exit 1
-              fi
-              sleep 30
-            done
           else
-            echo "Environment exists with status: $ENV_STATUS"
+            echo "Environment exists with status: $ENV_STATUS — syncing option settings"
+            aws elasticbeanstalk update-environment \
+              --application-name "$EB_APP_NAME" \
+              --environment-name "$EB_ENV_NAME" \
+              --option-settings file://.github/eb-options.json
           fi
+
+          echo "Waiting for environment to be Ready..."
+          ATTEMPTS=0
+          MAX_ATTEMPTS=20
+          while true; do
+            STATUS=$(aws elasticbeanstalk describe-environments \
+              --application-name "$EB_APP_NAME" \
+              --environment-names "$EB_ENV_NAME" \
+              --query 'Environments[0].Status' --output text)
+            echo "Environment status: $STATUS"
+            [ "$STATUS" = "Ready" ] && break
+            if [ "$STATUS" = "Terminated" ]; then
+              echo "::error::Environment terminated unexpectedly. Check EB events for details."
+              exit 1
+            fi
+            ATTEMPTS=$((ATTEMPTS + 1))
+            if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+              echo "::error::Timed out waiting for environment (10 min). Status: $STATUS"
+              exit 1
+            fi
+            sleep 30
+          done
 
       - name: Create source bundle and deploy
         run: |
@@ -151,7 +199,7 @@ jobs:
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    needs: deploy-backend
+    needs: [deploy-backend, setup-cognito]
     defaults:
       run:
         working-directory: frontend
@@ -179,6 +227,9 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_AWS_REGION: ${{ env.AWS_REGION }}
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID: ${{ needs.setup-cognito.outputs.user_pool_id }}
+          NEXT_PUBLIC_COGNITO_APP_CLIENT_ID: ${{ needs.setup-cognito.outputs.app_client_id }}
 
       - name: Deploy to S3
         run: aws s3 sync out/ "s3://${FRONTEND_BUCKET}" --delete

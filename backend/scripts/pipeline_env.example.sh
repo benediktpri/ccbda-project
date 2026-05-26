@@ -11,6 +11,6 @@ DLQ_NAME=ccbda-cv-processing-dlq
 JOB_QUEUE_NAME=ccbda-job-processing
 JOB_DLQ_NAME=ccbda-job-processing-dlq
 BEDROCK_MODEL_ID=eu.anthropic.claude-haiku-4-5-20251001-v1:0
-EB_ENV_NAME=ccbda-backend-env
+EB_ENV_NAME=ccbda-backend-prod
 COGNITO_USER_POOL_NAME=ccbda-user-pool
 COGNITO_APP_CLIENT_NAME=ccbda-app-client

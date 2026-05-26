@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     cognito_user_pool_id: str | None = None
     cognito_app_client_id: str | None = None
     environment: str = "dev"
+    auth_bypass: bool = False
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

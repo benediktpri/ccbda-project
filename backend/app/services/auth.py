@@ -1,3 +1,4 @@
+import logging
 import time
 
 import requests
@@ -7,6 +8,8 @@ from jose import jwk, jwt
 from jose.utils import base64url_decode
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -86,12 +89,18 @@ if settings.cognito_user_pool_id and settings.cognito_app_client_id:
         settings.cognito_user_pool_id, settings.cognito_app_client_id, settings.aws_region
     )
 
+if settings.auth_bypass:
+    logger.warning(
+        "AUTH_BYPASS is enabled — every request will authenticate as 'dev-user-id'. "
+        "This must NEVER be set in production."
+    )
+
 
 async def get_current_user(res: HTTPAuthorizationCredentials = Depends(security)):
+    if settings.auth_bypass:
+        return "dev-user-id"
+
     if not authenticator:
-        # Fallback for development if Cognito is not set up
-        if settings.environment == "dev" and not settings.cognito_user_pool_id:
-            return "dev-user-id"
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Authentication provider not configured"
         )
