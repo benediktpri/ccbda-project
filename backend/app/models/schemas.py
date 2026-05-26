@@ -74,6 +74,14 @@ class AnalysisOutput(BaseModel):
     recommendations: str = Field(
         description="Actionable advice addressed directly to the user (use you/your) on how to close gaps"
     )
+    cv_improvements: str = Field(
+        description=(
+            "Concrete, CV-specific advice addressed directly to the user (use you/your) on how to tailor "
+            "the CV for this role: which existing experiences, projects, achievements, or skills to "
+            "highlight or expand on, what to reframe or quantify, what to de-emphasize, and any gaps in "
+            "the CV's presentation (not in skills) worth addressing"
+        )
+    )
 
 
 # --- Extraction Models (used by Bedrock tool_use) ---
@@ -193,6 +201,7 @@ class AnalysisResultResponse(BaseModel):
     matched_skills: list[MatchedSkill] = Field(default_factory=list)
     missing_skills: list[MissingSkill] = Field(default_factory=list)
     recommendations: str | None = None
+    cv_improvements: str | None = None
     created_at: datetime | None = None
 
 

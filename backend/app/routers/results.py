@@ -41,6 +41,7 @@ def analyze_job(job_id: str, user_id: str = Depends(verify_user_id)):
         matched_skills=stored.get("matched_skills", []),
         missing_skills=stored.get("missing_skills", []),
         recommendations=stored.get("recommendations"),
+        cv_improvements=stored.get("cv_improvements"),
         created_at=stored.get("created_at"),
     )
 
@@ -55,6 +56,7 @@ def list_results(user_id: str = Depends(verify_user_id)):
             matched_skills=item.get("matched_skills", []),
             missing_skills=item.get("missing_skills", []),
             recommendations=item.get("recommendations"),
+            cv_improvements=item.get("cv_improvements"),
             created_at=item.get("created_at"),
         )
         for item in items
@@ -72,5 +74,6 @@ def get_result(job_id: str, user_id: str = Depends(verify_user_id)):
         matched_skills=item.get("matched_skills", []),
         missing_skills=item.get("missing_skills", []),
         recommendations=item.get("recommendations"),
+        cv_improvements=item.get("cv_improvements"),
         created_at=item.get("created_at"),
     )
