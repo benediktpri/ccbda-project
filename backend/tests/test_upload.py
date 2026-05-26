@@ -59,7 +59,7 @@ class TestUploadEndpoint:
         user = create_user()
         user_id = user["user_id"]
 
-        response = authenticated_client.post(f"/users/{user_id}/profile/upload")
+        response = authenticated_client.post(f"/api/users/{user_id}/profile/upload")
         assert response.status_code == 200
         data = response.json()
         assert "upload_url" in data
@@ -74,7 +74,7 @@ class TestUploadEndpoint:
         user = create_user()
         user_id = user["user_id"]
 
-        authenticated_client.post(f"/users/{user_id}/profile/upload")
+        authenticated_client.post(f"/api/users/{user_id}/profile/upload")
 
         raw = get_profile_raw(user_id)
         assert raw is not None
@@ -82,7 +82,7 @@ class TestUploadEndpoint:
         assert raw["raw_text"] == ""
 
     def test_upload_nonexistent_user_returns_404(self, aws_resources, authenticated_client):
-        response = authenticated_client.post("/users/nonexistent-id/profile/upload")
+        response = authenticated_client.post("/api/users/nonexistent-id/profile/upload")
         assert response.status_code == 404
 
 
@@ -94,7 +94,7 @@ class TestUploadFileEndpoint:
         user_id = user["user_id"]
 
         response = authenticated_client.post(
-            f"/users/{user_id}/profile/upload-file",
+            f"/api/users/{user_id}/profile/upload-file",
             files={"file": ("cv.pdf", b"%PDF-1.4 fake content", "application/pdf")},
         )
         assert response.status_code == 200
@@ -114,7 +114,7 @@ class TestUploadFileEndpoint:
         user_id = user["user_id"]
 
         response = authenticated_client.post(
-            f"/users/{user_id}/profile/upload-file",
+            f"/api/users/{user_id}/profile/upload-file",
             files={"file": ("doc.txt", b"plain text", "text/plain")},
         )
         assert response.status_code == 400
@@ -122,7 +122,7 @@ class TestUploadFileEndpoint:
 
     def test_upload_file_nonexistent_user_returns_404(self, aws_resources, authenticated_client):
         response = authenticated_client.post(
-            "/users/nonexistent-id/profile/upload-file",
+            "/api/users/nonexistent-id/profile/upload-file",
             files={"file": ("cv.pdf", b"%PDF-1.4 fake", "application/pdf")},
         )
         assert response.status_code == 404

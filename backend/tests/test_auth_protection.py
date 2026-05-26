@@ -5,7 +5,7 @@ def test_protected_user_route_requires_bearer_token():
     from app.main import app
 
     client = TestClient(app)
-    response = client.get("/users/some-user/jobs")
+    response = client.get("/api/users/some-user/jobs")
 
     assert response.status_code in {401, 403}
 
@@ -20,7 +20,7 @@ def test_user_id_mismatch_returns_403():
     app.dependency_overrides[get_current_user] = override_current_user
     try:
         client = TestClient(app)
-        response = client.get("/users/other-user/jobs")
+        response = client.get("/api/users/other-user/jobs")
     finally:
         app.dependency_overrides.clear()
 

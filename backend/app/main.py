@@ -39,11 +39,11 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-app.include_router(users.router, tags=["users"])
-app.include_router(upload.router, prefix="/users/{user_id}", tags=["upload"])
-app.include_router(profiles.router, prefix="/users/{user_id}", tags=["profiles"])
-app.include_router(jobs.router, prefix="/users/{user_id}", tags=["jobs"])
-app.include_router(results.router, prefix="/users/{user_id}", tags=["results"])
+app.include_router(users.router, prefix="/api", tags=["users"])
+app.include_router(upload.router, prefix="/api/users/{user_id}", tags=["upload"])
+app.include_router(profiles.router, prefix="/api/users/{user_id}", tags=["profiles"])
+app.include_router(jobs.router, prefix="/api/users/{user_id}", tags=["jobs"])
+app.include_router(results.router, prefix="/api/users/{user_id}", tags=["results"])
 
 
 @app.get("/health")
