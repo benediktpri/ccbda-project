@@ -75,18 +75,20 @@ Runs ruff lint/format + schema validation on every commit.
 ccbda-project/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py          # FastAPI entrypoint
+│   │   ├── main.py          # FastAPI entrypoint (all app routes mounted under /api)
 │   │   ├── config.py        # Settings from .env
+│   │   ├── logger.py        # Structured request logging
 │   │   ├── routers/         # API endpoints (users, upload, profiles, jobs, results)
 │   │   ├── models/          # Pydantic schemas
 │   │   ├── services/        # DynamoDB, Bedrock, and Cognito auth helpers
 │   │   └── lambdas/         # Lambda function handlers (deployed separately)
-│   ├── scripts/             # Table creation, pipeline deployment
+│   ├── scripts/             # Table creation, pipeline deployment, Cognito setup
 │   ├── tests/               # pytest + moto
 │   └── Dockerfile           # Production container
 ├── frontend/
-│   ├── src/app/             # Next.js pages (login, profile, upload, jobs)
-│   └── src/components/      # Shared components
+│   ├── src/app/             # Next.js pages (login, onboarding, profile, upload, jobs)
+│   ├── src/components/      # Shared UI components (Nav, ServiceWorkerRegistration, …)
+│   └── src/lib/             # API client, Cognito client, shared types, useAuth hook
 ├── .github/workflows/
 │   ├── ci.yml               # Lint + test on every push/PR
 │   └── deploy.yml           # Deploy on tag push (v*)
@@ -132,3 +134,5 @@ npx tsc --noEmit                         # Type check
 Authentication is handled by AWS Cognito. The frontend signs users up, confirms their email, and signs them in directly through the Cognito API. After login, Cognito returns JWT tokens. The frontend sends the `IdToken` to the FastAPI backend as a bearer token, and the backend verifies it before allowing access to user-scoped resources.
 
 The Cognito user `sub` is used as the application `user_id`. See [docs/Cognito_Implementation.md](docs/Cognito_Implementation.md) for the full implementation details.
+
+For local development you can set `AUTH_BYPASS=1` in `backend/.env` to skip Cognito verification and have every request authenticated as `dev-user-id`. Never enable this in deployed environments.

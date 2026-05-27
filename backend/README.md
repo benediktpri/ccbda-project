@@ -136,7 +136,7 @@ cp .env.example .env.local
 Edit `frontend/.env.local`:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
 NEXT_PUBLIC_AWS_REGION=eu-west-1
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=<value from setup_cognito.sh>
 NEXT_PUBLIC_COGNITO_APP_CLIENT_ID=<value from setup_cognito.sh>
@@ -165,7 +165,7 @@ npm run dev
 
 Frontend at http://localhost:3000.
 
-Go to http://localhost:3000/login, sign up, confirm the email code, and sign in. After login, the frontend calls `GET /users/me`; the backend verifies the Cognito token and creates the DynamoDB user record if it does not already exist.
+Go to http://localhost:3000/login, sign up, confirm the email code, and sign in. After login, the frontend calls `GET /api/users/me`; the backend verifies the Cognito token and creates the DynamoDB user record if it does not already exist.
 
 ## Daily Development
 
@@ -198,13 +198,14 @@ Or just commit — pre-commit hooks handle this automatically.
 ```
 backend/
 ├── app/
-│   ├── main.py            # FastAPI app + CORS + router registration
+│   ├── main.py            # FastAPI app + CORS + router registration (all routes under /api)
 │   ├── config.py          # Pydantic Settings (loaded from .env)
+│   ├── logger.py          # Structured request/JSON logging configuration
 │   ├── routers/
-│   │   ├── users.py       # GET /users/me, GET /users/{id}
-│   │   ├── upload.py      # POST /users/{id}/profile/upload[-file]
-│   │   ├── profiles.py    # GET/PATCH /users/{id}/profile
-│   │   ├── jobs.py        # CRUD /users/{id}/jobs + upload
+│   │   ├── users.py       # GET /api/users/me, GET /api/users/{id}
+│   │   ├── upload.py      # POST /api/users/{id}/profile/upload[-file]
+│   │   ├── profiles.py    # GET/PATCH /api/users/{id}/profile
+│   │   ├── jobs.py        # CRUD /api/users/{id}/jobs + upload
 │   │   └── results.py     # POST analyze, GET results
 │   ├── models/
 │   │   └── schemas.py     # Pydantic models for request/response + Bedrock tool schemas
@@ -225,35 +226,37 @@ backend/
 │   ├── toggle_pipeline.sh         # Enable/disable SQS event source mappings
 │   ├── teardown.sh                # Disable polling + terminate EB (stops costs)
 │   ├── pipeline_env.example.sh    # Config for deploy and Cognito setup scripts
-│   └── create_lambda_role.sh      # IAM role for Lambdas
-├── tests/
+│   ├── create_lambda_role.sh      # IAM role for Lambdas
+│   └── check_extraction_schema.py # Verify Bedrock tool schemas match Pydantic models
+├── tests/                         # pytest + moto (AWS services mocked)
+├── docker-compose.yml
 ├── Dockerfile
 └── pyproject.toml
 ```
 
 ## API Endpoints
 
-All user-scoped endpoints are prefixed with `/users/{user_id}`.
+All application routes are mounted under the `/api` prefix. Only `/health` lives at the root.
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/users/me` | Get or create current user from Cognito token |
-| GET | `/users/{user_id}` | Get user |
-| POST | `.../profile/upload` | Get presigned S3 URL for CV upload |
-| POST | `.../profile/upload-file` | Direct file upload (PDF) |
-| GET | `.../profile` | Get structured profile |
-| PATCH | `.../profile` | Update profile fields |
-| GET | `.../profile/status` | Check raw + structured processing status |
-| POST | `.../jobs` | Create job from text |
-| POST | `.../jobs/upload` | Get presigned URL for job PDF |
-| POST | `.../jobs/upload-file` | Direct job PDF upload |
-| GET | `.../jobs` | List all jobs |
-| GET | `.../jobs/{job_id}` | Get job details |
-| GET | `.../jobs/{job_id}/status` | Check job processing status |
-| DELETE | `.../jobs/{job_id}` | Delete a job |
-| POST | `.../jobs/{job_id}/analyze` | Run skills-gap analysis |
-| GET | `.../results` | List all analysis results |
-| GET | `.../results/{job_id}` | Get specific analysis result |
+| GET | `/api/users/me` | Get or create current user from Cognito token |
+| GET | `/api/users/{user_id}` | Get user |
+| POST | `/api/users/{user_id}/profile/upload` | Get presigned S3 URL for CV upload |
+| POST | `/api/users/{user_id}/profile/upload-file` | Direct file upload (PDF) |
+| GET | `/api/users/{user_id}/profile` | Get structured profile |
+| PATCH | `/api/users/{user_id}/profile` | Update profile fields |
+| GET | `/api/users/{user_id}/profile/status` | Check raw + structured processing status |
+| POST | `/api/users/{user_id}/jobs` | Create job from text |
+| POST | `/api/users/{user_id}/jobs/upload` | Get presigned URL for job PDF |
+| POST | `/api/users/{user_id}/jobs/upload-file` | Direct job PDF upload |
+| GET | `/api/users/{user_id}/jobs` | List all jobs |
+| GET | `/api/users/{user_id}/jobs/{job_id}` | Get job details |
+| GET | `/api/users/{user_id}/jobs/{job_id}/status` | Check job processing status |
+| DELETE | `/api/users/{user_id}/jobs/{job_id}` | Delete a job |
+| POST | `/api/users/{user_id}/jobs/{job_id}/analyze` | Run skills-gap analysis |
+| GET | `/api/users/{user_id}/results` | List all analysis results |
+| GET | `/api/users/{user_id}/results/{job_id}` | Get specific analysis result |
 | GET | `/health` | Health check |
 
 ## Environment Variables
@@ -263,14 +266,17 @@ See `.env.example` for a ready-to-copy template.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AWS_REGION` | `eu-west-1` | AWS region |
-| `AWS_PROFILE` | `lab_cli_user` | Named profile from `~/.aws/credentials` |
 | `DYNAMODB_TABLE_NAME` | `AppTable` | DynamoDB table name |
+| `DYNAMODB_ENDPOINT_URL` | — | Override DynamoDB endpoint (e.g. for local DynamoDB). Leave unset for real AWS. |
 | `S3_BUCKET_NAME` | `ccbda-app-bucket` | S3 bucket for file uploads |
 | `JOB_PROCESSING_QUEUE_URL` | — | SQS queue URL for job structuring (from `deploy_pipeline.sh` output) |
 | `BEDROCK_MODEL_ID` | `eu.anthropic.claude-haiku-4-5-20251001-v1:0` | Bedrock model for LLM calls |
 | `COGNITO_USER_POOL_ID` | — | Cognito User Pool ID from `setup_cognito.sh` |
 | `COGNITO_APP_CLIENT_ID` | — | Cognito App Client ID from `setup_cognito.sh` |
 | `ENVIRONMENT` | `dev` | Environment name |
+| `AUTH_BYPASS` | `0` | Local-only: set to `1` to bypass Cognito and authenticate every request as `dev-user-id`. Never set in deployed environments. |
+
+`AWS_PROFILE` is not read by the backend itself — it is only used by the AWS SDK and by the shell scripts under `scripts/`. Export it in your shell (`export AWS_PROFILE=lab_cli_user`) rather than putting it in `.env`.
 
 ## Cognito Authentication
 
@@ -282,7 +288,7 @@ Authorization: Bearer <IdToken>
 
 The backend verifies the JWT in `app/services/auth.py` using Cognito's public JWKS keys. After verification, the Cognito `sub` is used as the trusted application `user_id`.
 
-All `/users/{user_id}/...` endpoints compare the route `user_id` with the verified token `sub`. If they do not match, the request returns `403 Forbidden`.
+All `/api/users/{user_id}/...` endpoints compare the route `user_id` with the verified token `sub`. If they do not match, the request returns `403 Forbidden`.
 
 For the complete design, see [../docs/Cognito_Implementation.md](../docs/Cognito_Implementation.md).
 
