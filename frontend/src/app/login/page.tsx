@@ -10,12 +10,13 @@ export default function LoginPage() {
     const router = useRouter();
     const { login, signUp, confirmSignUp, loading } = useAuth();
     const [mode, setMode] = useState<Mode>('signin');
-    
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [confirmEmail, setConfirmEmail] = useState('');
     const [code, setCode] = useState('');
-    
+
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -73,6 +74,10 @@ export default function LoginPage() {
             }
             if (password.length < 8) {
                 setError('Password must be at least 8 characters long.');
+                return;
+            }
+            if (password !== confirmPassword) {
+                setError('Passwords do not match.');
                 return;
             }
             setSubmitting(true);
@@ -168,6 +173,26 @@ export default function LoginPage() {
                                             disabled:opacity-50 transition"
                                     />
                                 </div>
+
+                                {mode === 'signup' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                                            Repeat Password
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={confirmPassword}
+                                            onChange={e => setConfirmPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            disabled={submitting}
+                                            autoComplete="new-password"
+                                            className="w-full px-3 py-2.5 rounded-lg bg-slate-800 border border-slate-600
+                                                text-slate-100 placeholder:text-slate-500 text-sm
+                                                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent
+                                                disabled:opacity-50 transition"
+                                        />
+                                    </div>
+                                )}
                             </>
                         ) : (
                             <div>
@@ -206,7 +231,7 @@ export default function LoginPage() {
                             <p>
                                 Don&apos;t have an account?{' '}
                                 <button
-                                    onClick={() => { setMode('signup'); setError(null); setSuccessMessage(null); }}
+                                    onClick={() => { setMode('signup'); setError(null); setSuccessMessage(null); setConfirmPassword(''); }}
                                     className="text-indigo-400 hover:underline font-medium"
                                 >
                                     Sign up here
@@ -217,7 +242,7 @@ export default function LoginPage() {
                             <p>
                                 Already have an account?{' '}
                                 <button
-                                    onClick={() => { setMode('signin'); setError(null); setSuccessMessage(null); }}
+                                    onClick={() => { setMode('signin'); setError(null); setSuccessMessage(null); setConfirmPassword(''); }}
                                     className="text-indigo-400 hover:underline font-medium"
                                 >
                                     Sign in here

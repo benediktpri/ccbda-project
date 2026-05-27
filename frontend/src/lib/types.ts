@@ -112,6 +112,7 @@ export interface AnalysisResult {
   matched_skills: (MatchedSkill | string)[];
   missing_skills: (MissingSkill | string)[];
   recommendations?: string | null;
+  cv_improvements?: string | null;
   created_at?: string | null;
 }
 
