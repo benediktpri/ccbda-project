@@ -645,7 +645,7 @@ function StrengthsWeaknesses({
                     {/* Recommendations */}
                     {analysis.recommendations && (
                         <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-400 mb-2">💡 Recommendations</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-400 mb-2">💡 Tips & Overview</p>
                             <p className="text-sm text-slate-300 whitespace-pre-line leading-relaxed">{analysis.recommendations}</p>
                         </div>
                     )}
@@ -653,7 +653,7 @@ function StrengthsWeaknesses({
                     {/* CV Improvements */}
                     {analysis.cv_improvements && (
                         <div className="bg-slate-800/60 rounded-xl p-4 border border-slate-700">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-2">✏️ Recommendations to your CV</p>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-2">✏️ CV Recommendations</p>
                             <p className="text-sm text-slate-300 whitespace-pre-line leading-relaxed">{analysis.cv_improvements}</p>
                         </div>
                     )}
