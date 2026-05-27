@@ -1,6 +1,0 @@
-REGION=eu-west-1
-S3_BUCKET_NAME=
-DYNAMO_TABLE=
-ROLE_NAME=
-API_NAME=
-API_URL = <url from deploy.sh>

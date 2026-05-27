@@ -236,3 +236,6 @@ backend/scripts/pipeline_env.sh
 
 # Local helper binaries
 backend/jq.exe
+
+# Local-only docs
+docs/_personal/
