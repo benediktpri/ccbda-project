@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cognito } from './cognito';
 import { api } from './api';
 
@@ -42,17 +42,24 @@ function parseJwt(token: string) {
 }
 
 export function useAuth(): UseAuthReturn {
-    const [auth, setAuth] = useState<AuthData | null>(() => {
-        if (typeof window === 'undefined') return null;
+    // Keep initial render deterministic across server and client to avoid hydration mismatches.
+    const [auth, setAuth] = useState<AuthData | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
         try {
             const stored = localStorage.getItem(KEY);
-            return stored ? (JSON.parse(stored) as AuthData) : null;
+            const nextAuth = stored ? (JSON.parse(stored) as AuthData) : null;
+            queueMicrotask(() => {
+                setAuth(nextAuth);
+            });
         } catch {
             localStorage.removeItem(KEY);
-            return null;
+            queueMicrotask(() => {
+                setAuth(null);
+            });
         }
-    });
-    const [loading, setLoading] = useState(false);
+    }, []);
 
     async function login(email: string, password: string) {
         setLoading(true);
@@ -60,7 +67,7 @@ export function useAuth(): UseAuthReturn {
             const res = await cognito.signIn(email, password);
             const claims = parseJwt(res.IdToken);
             const userId = claims?.sub ?? '';
-            
+
             const data: AuthData = {
                 userId,
                 email: claims?.email ?? email,
@@ -68,7 +75,7 @@ export function useAuth(): UseAuthReturn {
                 accessToken: res.AccessToken,
                 refreshToken: res.RefreshToken,
             };
-            
+
             localStorage.setItem(KEY, JSON.stringify(data));
             setAuth(data);
 
