@@ -44,6 +44,8 @@ function parseJwt(token: string) {
 export function useAuth(): UseAuthReturn {
     // Keep initial render deterministic across server and client to avoid hydration mismatches.
     const [auth, setAuth] = useState<AuthData | null>(null);
+    // Start as true so protected pages wait until localStorage has been read.
+    const [initialising, setInitialising] = useState(true);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -52,11 +54,13 @@ export function useAuth(): UseAuthReturn {
             const nextAuth = stored ? (JSON.parse(stored) as AuthData) : null;
             queueMicrotask(() => {
                 setAuth(nextAuth);
+                setInitialising(false);
             });
         } catch {
             localStorage.removeItem(KEY);
             queueMicrotask(() => {
                 setAuth(null);
+                setInitialising(false);
             });
         }
     }, []);
@@ -116,7 +120,7 @@ export function useAuth(): UseAuthReturn {
     return {
         userId: auth?.userId ?? null,
         email: auth?.email ?? null,
-        loading,
+        loading: initialising || loading,
         isAuthenticated: auth !== null,
         login,
         signUp,
