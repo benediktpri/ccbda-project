@@ -8,7 +8,7 @@ import type {
   AnalysisResult,
 } from './types';
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   let token: string | null = null;
